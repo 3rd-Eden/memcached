@@ -1,4 +1,5 @@
-var net = require( 'net' ),
+var sys = require( 'sys' ),
+	net = require( 'net' ),
 	hashRing = require( './lib/hashring' ).hashRing,
 	memcached;
 
@@ -40,14 +41,19 @@ memcached.prototype = {
 	
 	connect: function(){
 		var self = this,
-			server_split_re = /(.*):(\d+){1,}$/g;
-		
+			// you might think doing a new RegExp is utterly pointless, I agree with you, but due to a bug in the V8 engine
+			// it cannot re-use generated /regexp/ as it will fail to execute properly
+			server_split_re = new RegExp( "(.*):(\\d+){1,}$" );
+			
 		this.ring.nodes.forEach( function( server ){
 			// The regexp chunks down the server address for us, splitting host and port so we can set up a connection example chunks:
 			// server_split_re.exec("3ffe:6a88:85a3:0:1319:8a2e:0370:7344") => ["3ffe:6a88:85a3:0:1319:8a2e:0370:7344", "3ffe:6a88:85a3:0:1319:8a2e:0370", "7344"]
 			// server_split_re.exec("192.168.0.102:11212") => ["192.168.0.102:11212", "192.168.0.102", "11212"]
 			
 			var chunks = server_split_re.exec( server ),
+				connection;
+				
+			if( chunks )
 				connection = new net.createConnection( chunks[2], chunks[1] );
 			
 			// if the server exists, close the current connection before we overwrite it
