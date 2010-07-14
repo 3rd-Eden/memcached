@@ -167,7 +167,7 @@ nMemcached.prototype.cas = function( user_key, value, lifetime, callback ){
 	return callback( "Command not implemented" );
 };
 
-nMemcached.prototype['delete'] = function( user_key, callback ){
+nMemcached.prototype.del = function( user_key, callback ){
 	var nM = this;
 	this.get_connection( user_key, function( err, connection ){
 		if( err )
