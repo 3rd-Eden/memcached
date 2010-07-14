@@ -16,7 +16,7 @@ There are Memcached clients available for node.js that only provide you with a s
 Would become:
 
 	var memcache = new nMemcached([ '192.168.0.102:11212', '192.168.0.103:11212', '192.168.0.104:11212' ]);
-	var memcache = new memcached({ '192.168.0.102:11212': 1, '192.168.0.103:11212': 2, '192.168.0.104:11212': 1 });
+	var memcache = new nMemcached({ '192.168.0.102:11212': 1, '192.168.0.103:11212': 2, '192.168.0.104:11212': 1 });
 	
 
 ### Basic commands only

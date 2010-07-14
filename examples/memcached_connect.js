@@ -1,5 +1,6 @@
 var sys = require( 'sys' ),
-	memcached = require( '../memcached' ).client,
-	cache;
-	
-cache = new memcached( "10.211.55.5:112211" );
+	nMemcached = require( '../nMemcached' ).client,
+	memcached;
+
+// connect to our memcached server on host 10.211.55.5, port 11211
+memcached = new nMemcached( "10.211.55.5:11211" );

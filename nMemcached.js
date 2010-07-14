@@ -1,10 +1,10 @@
 var sys = require( 'sys' ),
 	net = require( 'net' ),
 	hashRing = require( './lib/hashring' ).hashRing,
-	memcached;
+	nMemcached;
 
-// our memcached class
-memcached = function( memcached_servers ){
+// our nMemcached class
+nMemcached = function( memcached_servers ){
 	
 	var servers = [],
 		weights = {},
@@ -31,13 +31,16 @@ memcached = function( memcached_servers ){
 	// This will store and map our net connections
 	this.connectionpool = {};
 	this.ring = new hashRing( servers, weights );
+	
+	// @TODO this isn't ideal, starting with all connecting all servers, what would be better to make a function that returns the correct connection for a key
+	// eg: nMemcached.get_connection( user_key ); which looks up the server in the keyring, checks our connection pool, and connects if needed and returns the connection
 	this.connect();
 };
 
 // It would be utterly pointless if you are going to include a memcached library and not connect 
 // servers we just recieved ;)
-memcached.prototype = {
-	constructor:memcached,
+nMemcached.prototype = {
+	constructor:nMemcached,
 	
 	connect: function(){
 		var self = this,
@@ -66,4 +69,4 @@ memcached.prototype = {
 	}
 }
 
-exports.client = memcached;
+exports.client = nMemcached;
