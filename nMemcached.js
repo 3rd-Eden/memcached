@@ -8,6 +8,52 @@ var sys = require('sys'),
 // line ending that is used for sending and compiling Memcached commands
 var _nMemcached_end = '\r\n';
 
+// Allows us to manage multiple net connection for client
+var poolManager = exports.poolManager = function( name, max, constructor ){
+	
+	this.name = name;
+	this.max = max;
+	this.constructor = constructor;
+	this.list = [];
+};
+
+// allocates a availble connection, the opposite of the Freelist plugin, this actually creates many of the same
+poolManager.prototype.fetch = function( callback ){
+	var i = this.list.length, construct, self = this;
+	
+	// search for an inactive open connection
+	while( i-- )
+		if( !this.list[i].active && this.list[i].readyState == 'open' )
+			return callback( false, this.list[i] );
+	
+	// the constructor now handles off the callback
+	if( this.list.length < this.max ){
+		construct = this.constructor.apply( this, arguments );
+		return this.list.push( construct );
+	
+	// no connections ready to be used, check again later
+	} else {
+		process.nextTick( function(){ self.alloc( callback ) } );
+	}
+};
+
+// removes a item from the connection pool
+poolManager.prototype.remove = function( list_item ){
+	var index = this.list.indexOf( list_item );
+	if( index !== -1 )
+		this.list.splice( index, 1 );
+};
+
+// closes all connections in the pool and removes them from the queue
+poolManager.prototype.destroy = function(){
+	var i = this.list.length;
+	while( i-- )
+		this.list[i].end();
+		
+	this.list.length = 0;
+	this.constructor = null;
+};
+
 var nMemcached = exports.client = function( memcached_servers, options ){
 	
 	var servers = [],
@@ -41,7 +87,7 @@ var nMemcached = exports.client = function( memcached_servers, options ){
 	this.max_value = 1024*1024;
 	
 	// other options
-	this.max_connection_pool = 10;	// The max amount connections we can make to the same server, used for multi commands
+	this.max_connection_pool = 10;	// The max amount connections we can make to the same server, used for multi commands and async requests
 	this.retry_dead = 30000;		// The nr of ms before retrying a dead server
 	this.remove_dead = false;		// Ability to remove a server for the hashring if it's been marked dead more than x times. Or false to disabled
 	this.compress_keys = true;		// compreses the key to a md5 if it's larger than the max_key size
@@ -54,6 +100,10 @@ var nMemcached = exports.client = function( memcached_servers, options ){
 	this.pool = {};
 	this.dead = {};
 };
+
+// allows us to emit events when needed, for example when a server is dead,
+// you might want to get notified when this happens.
+sys.inherits( nMemcached, process.EventEmitter );
 
 // fuses an object with our internal properties, allowing users to further configure the client to their needs
 nMemcached.prototype.__fuse = function( options, ignoreUndefinedProps ){
@@ -76,53 +126,69 @@ nMemcached.prototype.__received_data = function( data, connection ){
 
 // sends the actual query to memcached server
 nMemcached.prototype.__query = function( connection, query, callback ){
+	
+	// we have no connection, we are going to fail silently the server might be borked
+	if( !connection )
+		return callback( false, false );
+	
 	if( connection.readyState !== 'open' )
 		return callback( 'Error sending Memcached command, connection readyState is set to ' + connection.readyState, connection );
 	
 	connection._nMcallbacks.push( callback );
+	connection.active = true;
 	connection.write( query + _nMemcached_end );
 };
 
 nMemcached.prototype.__connect = function( node, callback ){
-	// check if we already created a connection for that server
+	// check if we already created a connection pool for that server
 	if( node in this.pool )
-		return callback( false, this.pool[ node ] );
+		return this.pool[ node ].fetch( callback );
 	
 	var servertkn = /(.*):(\d+){1,}$/.exec( node ),
-		connection = this.pool[ node ] = net.createConnection( servertkn[2], servertkn[1] ),
 		nM = this;
+	
+	//
+	nM.pool[ node ] = new poolManager( node, nM.max_connection_pool, function( callback ){
+		var connection = net.createConnection( servertkn[2], servertkn[1] ),
+			pool = this;
 		
-	// stores connection specific callbacks
-	connection._nMcallbacks = [];
-	
-	// attach the events:
-	// the connection is ready for usage
-	connection.addListener( 'connect', function(){
-		this.setTimeout( 0 );
-		this.setNoDelay();
-		callback( false, this );
+		// stores connection specific callbacks
+		connection._nMcallbacks = [];
+		
+		// attach the events:
+		// the connection is ready for usage
+		connection.addListener( 'connect', function(){
+			this.setTimeout( 0 );
+			this.setNoDelay();
+			callback( false, this );
+		});
+		
+		// the connect recieved data from the Memcached server
+		connection.addListener( 'data', function( data ){
+			nM._received_data( data, this );
+			this.active = false;
+		});
+		
+		// something happend to the Memcached serveer sends a 'FIN' packet, so we will just close the connection
+		connection.addListener( 'end', function(){
+			this.end();
+		});
+		
+		// something happend while connecting to the server
+		connection.addListener( 'error', function( error ){
+			callback( false, false ); // don't emit an error, just mark dead and continue
+			nM.death( node );
+		});
+		
+		// connection no-longer in use, remove from our pool
+		connection.addListener( 'close', function(){
+			pool.remove( this );
+		});
+		
+		return connection;
 	});
 	
-	// the connect recieved data from the Memcached server
-	connection.addListener( 'data', function( data ){
-		nM._received_data( data, this );
-	});
-	
-	// something happend to the Memcached serveer sends a 'FIN' packet, so we will just close the connection
-	connection.addListener( 'end', function(){
-		this.end();
-	});
-	
-	// something happend while connecting to the server
-	connection.addListener( 'error', function( error ){
-		callback( false, false ); // don't emit an error, just mark dead and continue
-		nM.death( node );
-	});
-	
-	// connection no-longer in use, remove from our pool
-	connection.addListener( 'close', function(){
-		delete nM.pool[ node ];
-	});
+	this.pool[ node ].fetch( callback );
 };
 
 // validates the integrity of the key
@@ -200,6 +266,11 @@ nMemcached.prototype.set = function( user_key, value, lifetime, callback ){
 		// automatically convert the code
 		if( typeof value !== 'string' )
 			value = JSON.stringify( value );
+		
+		// the length it large, so we are going to fail silently 
+		if( value.length > this.max_value )
+			return callback( false, false );
+		
 		
 		// Prepare set-query
 		var expire = lifetime || 0,
