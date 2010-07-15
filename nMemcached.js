@@ -34,25 +34,53 @@ var nMemcached = exports.client = function( memcached_servers, options ){
 		}
 	}
 	
-	// current restrictions of memcached
+	// current restrictions of a unmodified Memcached server
+	// these can be overwritten with the options parameter
 	this.max_key = 250;
 	this.max_expiration = 2592000;
+	this.max_value = 1024*1024;
+	
+	// other options
+	this.max_connection_pool = 10;	// The max amount connections we can make to the same server, used for multi commands
+	this.retry_dead = 30000;		// The nr of ms before retrying a dead server
+	this.remove_dead = false;		// Ability to remove a server for the hashring if it's been marked dead more than x times. Or false to disabled
+	this.compress_keys = true;		// compreses the key to a md5 if it's larger than the max_key size
+	
+	// fuse the options with our configuration
+	this.__fuse( options );
 	
 	this.servers = servers;
 	this.hashring = new hashring( servers, weights );
 	this.pool = {};
+	this.dead = {};
+};
+
+// fuses an object with our internal properties, allowing users to further configure the client to their needs
+nMemcached.prototype.__fuse = function( options, ignoreUndefinedProps ){
+	if( !options )
+		return;
+		
+	var key, undefined;
+	
+	for( key in options ){
+		if( ignoreUndefinedProps && this[ key ] == undefined )
+			continue;
+			
+		this[ key ] = options[ key ];
+	}
 };
 
 nMemcached.prototype.__received_data = function( data, connection ){
 
 };
 
+// sends the actual query to memcached server
 nMemcached.prototype.__query = function( connection, query, callback ){
 	if( connection.readyState !== 'open' )
-		return callback( "Error sending Memcached command, connection's readyState is set to " + connection.readyState, connection );
+		return callback( 'Error sending Memcached command, connection readyState is set to ' + connection.readyState, connection );
 	
-	connection._nmcallbacks.push( callback );
-	connection.write( query + _nMemcached_end )
+	connection._nMcallbacks.push( callback );
+	connection.write( query + _nMemcached_end );
 };
 
 nMemcached.prototype.__connect = function( node, callback ){
@@ -65,33 +93,58 @@ nMemcached.prototype.__connect = function( node, callback ){
 		nM = this;
 		
 	// stores connection specific callbacks
-	connection._nmcallbacks = [];
+	connection._nMcallbacks = [];
 	
-	// attach the events
+	// attach the events:
+	// the connection is ready for usage
 	connection.addListener( 'connect', function(){
 		this.setTimeout( 0 );
 		this.setNoDelay();
 		callback( false, this );
 	});
 	
+	// the connect recieved data from the Memcached server
 	connection.addListener( 'data', function( data ){
-		self._received_data( data, this );
+		nM._received_data( data, this );
 	});
 	
+	// something happend to the Memcached serveer sends a 'FIN' packet, so we will just close the connection
 	connection.addListener( 'end', function(){
-		if( this.readyState ){
-			this.end();
-		}
+		this.end();
 	});
 	
+	// something happend while connecting to the server
+	connection.addListener( 'error', function( error ){
+		callback( false, false ); // don't emit an error, just mark dead and continue
+		nM.death( node );
+	});
+	
+	// connection no-longer in use, remove from our pool
 	connection.addListener( 'close', function(){
 		delete nM.pool[ node ];
 	});
 };
 
-// checks if the user_key is allowed for memcached key (size wise). Or we will convert it to a md5 hash
-nMemcached.prototype.__validate_key = function( user_key ){
-	return user_key.length <= this.max_key ? user_key : crypto.createHash( 'md5' ).update( data ).digest( 'hex' )
+// validates the integrity of the key
+nMemcached.prototype.__validate_key = function( user_key, callback ){
+	if( !user_key || user_key == undefined || user_key == null ){
+		callback( 'Key cannot be null', false );
+		return false;
+	}
+	
+	if( typeof user_key !== 'string' ){
+		callback( 'Key must be a string', false );
+		return false;
+	}
+	
+	if( user_key.length > this.max_key && !this.compress_keys ){
+		callback( 'Key length is > ' + this.max_key, false );
+		return false;
+	} else {
+		user_key = crypto.createHash( 'md5' ).update( data ).digest( 'hex' );
+	}
+	
+	return true;
 };
 
 // public API methods for nMemcached:
@@ -101,34 +154,48 @@ nMemcached.prototype.get_connection = function( user_key, callback ){
 	var node = this.hashring.get_node( user_key );
 	
 	if( !node )
-		return callback( "Failed to get the correct node from our hash ring" )
+		return callback( 'Failed to get the correct node from our hash ring' )
 	
 	this.__connect( node, callback );
 };
 
+nMemcached.prototype.death = function( node ){
+	
+};
+
+// public Memcached API's
+
 nMemcached.prototype.get = function( user_key, callback ){
 	var nM = this;
-	this.get_connection( user_key, function( err, connection ){
+	
+	if( !nM.__validate_key( user_key ) )
+		return;
+		
+	nM.get_connection( user_key, function( err, connection ){
 		if( err )
-			return callback( "Unable to start or retrieve a TCP connection", connection );
+			return callback( 'Unable to start or retrieve a TCP connection', connection );
 		
 		nM.__query( connection, 'get ' + user_key, callback );
 	});
 };
 
 nMemcached.prototype.get_multi = function( user_keys, callback ){
-	return callback( "Command not implemented" );
+	return callback( 'Command not implemented' );
 };
 
 nMemcached.prototype.gets = function( user_key, callback ){
-	return callback( "Command not implemented" );
+	return callback( 'Command not implemented' );
 };
 
 nMemcached.prototype.set = function( user_key, value, lifetime, callback ){
 	var nM = this;
-	this.get_connection( user_key, function( err, connection ){
+	
+	if( !nM.__validate_key( user_key ) )
+		return;
+		
+	nM.get_connection( user_key, function( err, connection ){
 		if( err )
-			return callback( "Unable to start or retrieve a TCP connection", connection );
+			return callback( 'Unable to start or retrieve a TCP connection', connection );
 		
 		// automatically convert the code
 		if( typeof value !== 'string' )
@@ -144,44 +211,56 @@ nMemcached.prototype.set = function( user_key, value, lifetime, callback ){
 };
 
 nMemcached.prototype.set_multi = function( user_key, callback ){
-	return callback( "Command not implemented" );
+	return callback( 'Command not implemented' );
 };
 
 nMemcached.prototype.add = function( user_key, value, lifetime, callback ){
-	return callback( "Command not implemented" );
+	return callback( 'Command not implemented' );
 };
 
 nMemcached.prototype.replace = function( user_key, value, lifetime, callback ){
-	return callback( "Command not implemented" );
+	return callback( 'Command not implemented' );
 };
 
 nMemcached.prototype.append = function( user_key, value, lifetime, callback ){
-	return callback( "Command not implemented" );
+	return callback( 'Command not implemented' );
 };
 
 nMemcached.prototype.prepend = function( user_key, value, lifetime, callback ){
-	return callback( "Command not implemented" );
+	return callback( 'Command not implemented' );
 };
 
 nMemcached.prototype.cas = function( user_key, value, lifetime, callback ){
-	return callback( "Command not implemented" );
+	return callback( 'Command not implemented' );
 };
 
 nMemcached.prototype.del = function( user_key, callback ){
 	var nM = this;
-	this.get_connection( user_key, function( err, connection ){
+	
+	if( !nM.__validate_key( user_key ) )
+		return;
+		
+	nM.get_connection( user_key, function( err, connection ){
 		if( err )
-			return callback( "Unable to start or retrieve a TCP connection", connection );
+			return callback( 'Unable to start or retrieve a TCP connection', connection );
 		
 		nM.__query( connection, 'delete ' + user_key, callback );
 	});
+};
+
+nMemcached.prototype.del_multi = function( user_keys, callback ){
+	return callback( 'Command not implemented' );
 };
 
 // Note, these should query all available nodes, if they all retrieve the same version return a string
 // if not, a JSON object with as key: the node, and as value the version, it does not do this atm
 nMemcached.prototype.version = function( callback ){
 	var nM = this;
-	this.servers.forEach(function( server ){
+	
+	if( !nM.__validate_key( user_key ) )
+		return;
+		
+	nM.servers.forEach(function( server ){
 		nM.__connect( server, function(){
 			nM.__query( connection, 'version', callback );
 		})
@@ -190,9 +269,17 @@ nMemcached.prototype.version = function( callback ){
 
 nMemcached.prototype.stats = function( callback ){
 	var nM = this;
-	this.servers.forEach(function( server ){
+	
+	if( !nM.__validate_key( user_key ) )
+		return;
+	
+	nM.servers.forEach(function( server ){
 		nM.__connect( server, function(){
 			nM.__query( connection, 'stats', callback );
 		})
 	});
+};
+
+nMemcached.prototype.flush = function( callback ){
+	return callback( 'Command not implemented' );
 };
