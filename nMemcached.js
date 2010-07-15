@@ -39,16 +39,21 @@ poolManager.prototype.fetch = function( callback ){
 
 // removes a item from the connection pool
 poolManager.prototype.remove = function( list_item ){
-	var index = this.list.indexOf( list_item );
-	if( index !== -1 )
-		this.list.splice( index, 1 );
+	var index = this.list.indexOf( list_item ),
+		connection;
+		
+	if( index !== -1 ){
+		connection = this.list.splice( index, 1 );
+		if( connection.readyState != 'closed' && connection.destroy )
+			connection.destroy()
+	}
 };
 
 // closes all connections in the pool and removes them from the queue
 poolManager.prototype.destroy = function(){
 	var i = this.list.length;
 	while( i-- )
-		this.list[i].end();
+		this.list[i].destroy();
 		
 	this.list.length = 0;
 	this.constructor = null;
@@ -126,7 +131,6 @@ nMemcached.prototype.__received_data = function( data, connection ){
 
 // sends the actual query to memcached server
 nMemcached.prototype.__query = function( connection, query, callback ){
-	
 	// we have no connection, we are going to fail silently the server might be borked
 	if( !connection )
 		return callback( false, false );
@@ -146,8 +150,8 @@ nMemcached.prototype.__connect = function( node, callback ){
 	
 	var servertkn = /(.*):(\d+){1,}$/.exec( node ),
 		nM = this;
-	
-	//
+		
+	// no connections found, so create a new poolManager and add the connection constructor.
 	nM.pool[ node ] = new poolManager( node, nM.max_connection_pool, function( callback ){
 		var connection = net.createConnection( servertkn[2], servertkn[1] ),
 			pool = this;
@@ -155,7 +159,6 @@ nMemcached.prototype.__connect = function( node, callback ){
 		// stores connection specific callbacks
 		connection._nMcallbacks = [];
 		
-		// attach the events:
 		// the connection is ready for usage
 		connection.addListener( 'connect', function(){
 			this.setTimeout( 0 );
@@ -171,7 +174,7 @@ nMemcached.prototype.__connect = function( node, callback ){
 		
 		// something happend to the Memcached serveer sends a 'FIN' packet, so we will just close the connection
 		connection.addListener( 'end', function(){
-			this.end();
+			this.destroy();
 		});
 		
 		// something happend while connecting to the server
@@ -184,7 +187,7 @@ nMemcached.prototype.__connect = function( node, callback ){
 		connection.addListener( 'close', function(){
 			pool.remove( this );
 		});
-		
+
 		return connection;
 	});
 	
