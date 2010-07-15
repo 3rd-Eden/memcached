@@ -3,61 +3,11 @@ var sys = require('sys'),
 	crypto = require( 'crypto' ),
 	
 	buffer = require('buffer').Buffer,
-	hashring = require('./lib/hashring').hashRing;
+	hashring = require('./lib/hashring').hashRing,
+	connectionPool = require('./lib/connectionPool').manager;
 
 // line ending that is used for sending and compiling Memcached commands
 var _nMemcached_end = '\r\n';
-
-// Allows us to manage multiple net connection for client
-var poolManager = exports.poolManager = function( name, max, constructor ){
-	
-	this.name = name;
-	this.max = max;
-	this.constructor = constructor;
-	this.list = [];
-};
-
-// allocates a availble connection, the opposite of the Freelist plugin, this actually creates many of the same
-poolManager.prototype.fetch = function( callback ){
-	var i = this.list.length, construct, self = this;
-	
-	// search for an inactive open connection
-	while( i-- )
-		if( !this.list[i].active && this.list[i].readyState == 'open' )
-			return callback( false, this.list[i] );
-	
-	// the constructor now handles off the callback
-	if( this.list.length < this.max ){
-		construct = this.constructor.apply( this, arguments );
-		return this.list.push( construct );
-	
-	// no connections ready to be used, check again later
-	} else {
-		process.nextTick( function(){ self.alloc( callback ) } );
-	}
-};
-
-// removes a item from the connection pool
-poolManager.prototype.remove = function( list_item ){
-	var index = this.list.indexOf( list_item ),
-		connection;
-		
-	if( index !== -1 ){
-		connection = this.list.splice( index, 1 );
-		if( connection.readyState != 'closed' && connection.destroy )
-			connection.destroy()
-	}
-};
-
-// closes all connections in the pool and removes them from the queue
-poolManager.prototype.destroy = function(){
-	var i = this.list.length;
-	while( i-- )
-		this.list[i].destroy();
-		
-	this.list.length = 0;
-	this.constructor = null;
-};
 
 var nMemcached = exports.client = function( memcached_servers, options ){
 	
@@ -152,7 +102,7 @@ nMemcached.prototype.__connect = function( node, callback ){
 		nM = this;
 		
 	// no connections found, so create a new poolManager and add the connection constructor.
-	nM.pool[ node ] = new poolManager( node, nM.max_connection_pool, function( callback ){
+	nM.pool[ node ] = new connectionPool( node, nM.max_connection_pool, function( callback ){
 		var connection = net.createConnection( servertkn[2], servertkn[1] ),
 			pool = this;
 		
@@ -169,18 +119,18 @@ nMemcached.prototype.__connect = function( node, callback ){
 		// the connect recieved data from the Memcached server
 		connection.addListener( 'data', function( data ){
 			nM._received_data( data, this );
-			this.active = false;
 		});
 		
 		// something happend to the Memcached serveer sends a 'FIN' packet, so we will just close the connection
 		connection.addListener( 'end', function(){
-			this.destroy();
+			return this.destroy ? this.destroy() : false;
 		});
 		
 		// something happend while connecting to the server
 		connection.addListener( 'error', function( error ){
 			callback( false, false ); // don't emit an error, just mark dead and continue
 			nM.death( node );
+			return this.destroy ? this.destroy() : false;
 		});
 		
 		// connection no-longer in use, remove from our pool
