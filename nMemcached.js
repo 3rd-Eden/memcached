@@ -6,30 +6,22 @@ var sys = require('sys'),
 	hashring = require('./lib/hashring').hashRing,
 	connectionPool = require('./lib/connectionPool').manager;
 
-// line ending that is used for sending and compiling Memcached commands
-const $line_ending = '\r\n';
-
-// set flags that identifys the datastructure we retrieve
+const $line_ending = '\r\n'
 const $flags = {
-		JSON: 1,
-		COMPRESSION: 2,
-		BOTH: 3
+		JSON: 1<<1,
+		COMPRESSION: 2<<1,
+		COMPRESSEDJSON: 3<<1,
+		BINARY: 4<<1,
+		COMPRESSEDBINARY: 5<<1
 	};
-	
-// error responses from the Memcached server
 const $errors = ['ERROR', 'NOT_FOUND', 'CLIENT_ERROR', 'SERVER_ERROR'];
-
-// responses from the Memcached server, grouped by command
 const $response = {
-		get: ['VALUE', 'END'],
 		set: ['STORED', 'NOT_STORED', 'EXISTS'],
 		stats: ['STAT', 'END'],
 		del: ['DELETED'],
 		version: ['VERSION'],
 		flush: ['OK']
 	};
-
-// empty callback function
 const $empty = function(){};
 
 var nMemcached = exports.client = function( memcached_servers, options ){
@@ -72,7 +64,7 @@ var nMemcached = exports.client = function( memcached_servers, options ){
 	this.compress_threshold = 10240;// at how many bytes should we compress (using zip)
 	
 	// fuse the options with our configuration
-	this.__fuse( options );
+	this.fuse( options );
 	
 	this.servers = servers;
 	this.hashring = new hashring( servers, weights );
@@ -85,7 +77,7 @@ var nMemcached = exports.client = function( memcached_servers, options ){
 sys.inherits( nMemcached, process.EventEmitter );
 
 // fuses an object with our internal properties, allowing users to further configure the client to their needs
-nMemcached.prototype.__fuse = function( options, ignoreUndefinedProps ){
+nMemcached.prototype.fuse = function( options, ignoreUndefinedProps ){
 	if( !options )
 		return;
 		
@@ -99,41 +91,64 @@ nMemcached.prototype.__fuse = function( options, ignoreUndefinedProps ){
 	}
 };
 
-// Dedicated parsers for each request type so we know get the most well performing and correctly parsed down format
+// dedicated parsers for each request type so we know get the most well performing and correctly parsed down format
 // ofcourse these parsers are only needed when the response isn't one word such as storing
 nMemcached.parsers = {
-	get: function( peices ){
+	
+	// handles get requests, parses back the data to the correct format based on $flags provided
+	get: function( peices, query_config ){
 		var header = peices.shift(),
 			footer = peices.pop(),
 			response = peices.join( $line_ending );
 		
 		return response;
+	},
+	
+	// parses out the version information
+	version: function( peices ){
+		return /(\d+)(?:\.)(\d+)(?:\.)(\d+)$/.exec( peices.shift() );
+	},
+	
+	// parse the stats to an object
+	stats: function( peices ){
+		var footer = peices.pop(),
+			response = {};
+		
+		peices.forEach(function( stat ){
+			var chunk = stat.replace( "STAT ", '' ).split( ' ' );
+			response[ chunk[0] ] = Number( chunk[1] );
+		});
+		
+		return response;
 	}
 };
 
-// parses the data
-nMemcached.prototype.__received_data = function( data, connection ){
-	var chunks = data.toString().split( $line_ending ),
-		query_config = connection.metadata.shift(),
-		length = chunks.pop(),
-		response;
-		
-	// check for errors, do this early so we don't have to fully parse the contents if it's not needed
-	if( $errors.some( function( value ){ return chunks[0] === value || chunks[ length -1] === value } ) )
-		query_config.callback( "Memcached command produced an error", query_config.query );
+// handles the responses we recieve from the net.Stream
+nMemcached.prototype.response = function( data, connection ){
+	var response = data.toString().split( $line_ending ),
+		meta = connection.metadata.shift(),
+		size = response.pop();
+			
+	data = false;
 	
-	sys.puts("mew")
+	// check for errors, do this early so we don't have to fully parse the contents if it's not needed
+	if( $errors.some( function( value ){ return response[0] === value || response[ size -1 ] === value } ) )
+		return meta.callback( "Memcached command produced an error", meta.query );
 	
 	// do we have a dedicated parser available? if so, parse it
-	if( nMemcached.parsers[ query_config.type ] )
-		response = nMemcached.parsers[ query_config.type ]( chunks );
-		
-	// we always have a callback
-	query_config.callback( false, response ? response : true );
+	if( nMemcached.parsers[ meta.type ] )
+		data = nMemcached.parsers[ meta.type ]( response, meta, connection );
+	
+	// some Memcached command respond with a single statement, so we can just take advantage of that
+	if( !data && size == 1 )
+		data = $response[ meta.type ].indexOf( response[0] ) !== -1;
+	
+	// report back to the user, if the user
+	meta.callback( false, data || response );
 };
 
 // sends the actual query to memcached server
-nMemcached.prototype.__query = function( connection, query, query_config, callback ){
+nMemcached.prototype.query = function( connection, query, query_config, callback ){
 	// we have no connection, we are going to fail silently the server might be borked
 	if( !connection )
 		return callback( false, false );
@@ -151,23 +166,25 @@ nMemcached.prototype.__query = function( connection, query, query_config, callba
 };
 
 // fetches or generates a new connection & connection pool for a server node
-nMemcached.prototype.__connect = function( node, callback ){
+nMemcached.prototype.connect = function( node, callback ){
 	// check if we already created a connection pool for that server
 	if( node in this.pool )
 		return this.pool[ node ].fetch( callback );
 		
 	var servertkn = /(.*):(\d+){1,}$/.exec( node ),
-		nM = this;
+		that = this;
 		
 	// no connections found, so create a new poolManager and add the connection constructor.
-	nM.pool[ node ] = new connectionPool( node, nM.max_connection_pool, function( callback ){
+	that.pool[ node ] = new connectionPool( node, that.max_connection_pool, function( callback ){
 		var connection = net.createConnection( servertkn[2], servertkn[1] ),
 			pool = this;
 		
 		// stores connection specific metadata
 		connection.metadata = [];		
+		
 		// the connection is ready for usage
 		connection.addListener( 'connect', function(){
+			// configure the connection to be open and stay open and push the data directly to the connection
 			this.setTimeout( 0 );
 			this.setNoDelay();
 			callback( false, this );
@@ -175,7 +192,7 @@ nMemcached.prototype.__connect = function( node, callback ){
 		
 		// the connect recieved data from the Memcached server
 		connection.addListener( 'data', function( data ){
-			nM.__received_data( data, this );
+			that.response( data, this );
 		});
 		
 		// something happend to the Memcached serveer sends a 'FIN' packet, so we will just close the connection
@@ -185,9 +202,7 @@ nMemcached.prototype.__connect = function( node, callback ){
 		
 		// something happend while connecting to the server
 		connection.addListener( 'error', function( error ){
-			callback( false, false ); // don't emit an error, just mark dead and continue
-			nM.death( node, error );
-			sys.error( error );
+			that.death( node, error, callback );
 			return this.destroy ? this.destroy() : false;
 		});
 		
@@ -202,41 +217,62 @@ nMemcached.prototype.__connect = function( node, callback ){
 	this.pool[ node ].fetch( callback );
 };
 
-// validates the integrity of the key
-nMemcached.prototype.__validate_key = function( user_key, callback ){
-	if( !user_key || user_key == undefined || user_key == null ){
-		callback( 'Key cannot be null', false );
+// validates and replaces arguments when needed. some big assumptions are made here:
+// * 	if theres only one argument, it will be a callback
+// *	if there are more arguments, the first is the key, the last will be callback
+// *	min indicates the minimal length of arguments
+// *	max indicates the maximal length of arguments
+nMemcached.prototype.validate_arguments = function( args, min, max ){
+	var length = args.length,
+		callback = args[ length - 1 ],
+		err;
+	
+	// set a correct callback function
+	if( length == 1 ){
+		args[0] = typeof args[0] == 'function' ? args[1] : $empty;
+	}
+	
+	// validate the argument size
+	if( length < min || length > max )
+		err = "Invalid arguments supplied, this function requires a minimum of " + min + " and maximum of " + max + " arguments";
+	
+	// we could ofcourse do a args[1].toString(), but I feel it's up to the developer to provide us wit the
+	// correct arguments. You don't expect your car to run properly if you fill your tank with sand instead of gas.. 
+	if( !err && typeof args[0] !== 'string' )
+		err = 'The value of the key must be a string';
+	
+	// replace the key with a md5 if it's longer than the allowed size, if not throw an error	
+	if( !err && args[0].length > this.max_key ){
+		if( !this.compress_keys )
+			err = 'The length of the key is to long. It should not be greater than ' + this.max_key;
+		else
+			args[0] = crypto.createHash( 'md5' ).update( args[0] ).digest( 'hex' );
+	}
+	
+	// send the error, and tell that we marked the arguments as failed.
+	if( err ){
+		callback( err );
 		return false;
 	}
 	
-	if( typeof user_key !== 'string' ){
-		callback( 'Key must be a string', false );
-		return false;
-	}
-	
-	if( user_key.length > this.max_key && !this.compress_keys ){
-		callback( 'Key length is > ' + this.max_key, false );
-		return false;
-	} else {
-		user_key = crypto.createHash( 'md5' ).update( user_key ).digest( 'hex' );
-	}
-	
+	// no issues here;
 	return true;
 };
 
-// public API methods for nMemcached:
-
 // returns a connection that is ready to be used
-nMemcached.prototype.get_connection = function( user_key, callback ){
-	var node = this.hashring.get_node( user_key );
+nMemcached.prototype.get_connection = function( key, callback ){
+	var node = this.hashring.get_node( key );
 	
 	if( !node )
-		return callback( 'Failed to get the correct node from our hash ring' )
+		return callback( 'Failed to get the correct node from our hash ring' );
 	
-	this.__connect( node, callback );
+	this.connect( node, callback );
 };
 
-nMemcached.prototype.death = function( node ){};
+nMemcached.prototype.death = function( node, err, callback ){
+	sys.puts('Connection death due: ' + err );
+	callback( err, false );
+};
 
 // shuts down all current connections
 nMemcached.prototype.disconnect = function(){
@@ -245,100 +281,103 @@ nMemcached.prototype.disconnect = function(){
 	
 };
 
-// public Memcached API's
-
-nMemcached.prototype.get = function( user_key, callback ){
-	var nM = this;
+/*
 	
-	if( !nM.__validate_key( user_key ) )
+	The following batch of methods represent the actual interface to the
+	Memcached command, if you have no clue what you are doing you should no
+	touch, or even think about the methods mentioned above. Unless you like to 
+	break things, than go a head :)!
+
+*/
+nMemcached.prototype.get = function( key, callback ){
+	var that = this;
+	if( !that.validate_arguments( arguments, 2, 2 ) )
 		return;
 		
-	nM.get_connection( user_key, function( err, connection ){
-		if( err )
-			return callback( 'Unable to start or retrieve a TCP connection', connection );
+	// fetch the correct connection
+	that.get_connection( key, function( err, conn ){
+		if( err ) return callback( err );
 		
-		nM.__query( connection, 'get ' + user_key, { key: user_key, type: 'get' }, callback );
-	});
+		that.query( conn, 'get ' + key, { key: key,	type: 'get' }, callback );
+	})
 };
 
-nMemcached.prototype.get_multi = function( user_keys, callback ){
+nMemcached.prototype.get_multi = function( keys, callback ){
 	return callback( 'Command not implemented' );
 };
 
-nMemcached.prototype.gets = function( user_key, callback ){
+nMemcached.prototype.gets = function( key, callback ){
 	return callback( 'Command not implemented' );
 };
 
-nMemcached.prototype.set = function( user_key, value, lifetime, callback ){
-	var nM = this;
-	
-	// validate the user_key, stop if it fails
-	if( !nM.__validate_key( user_key ) )
+nMemcached.prototype.set = function( key, value, lifetime, callback ){
+	var that = this;
+	if( !that.validate_arguments( arguments, 4, 4 ) )
 		return;
 	
-	nM.get_connection( user_key, function( err, connection ){
-		if( err )
-			return callback( 'Unable to start or retrieve a TCP connection', connection );
+	// fetch the correct connection
+	that.get_connection( key, function( err, conn ){
+		if( err ) return callback( err );
 		
-		var flags = 0;
+		// construct the command and parse down the value if needed
+		var flag = 0;
 		
-		// automatically convert the code
+		// convert the value down to a JSON object
 		if( typeof value !== 'string' ){
 			value = JSON.stringify( value );
-			flags = $flags.JSON;
+			// update the flag
+			flag = $flags.JSON;
 		}
 		
+		// check if we need to compress the data
 		if( value.length > this.compress_threshold ){
-			// @todo, implement compression
+			// update the flag
+			flag = flag == $flags.JSON ? $flags.COMPRESSEDJSON : flag == $flags.BINARY ? $flags.COMPRESSEDBINARY : $flags.COMPRESSION;
 		}
 		
-		// the length it large, so we are going to fail silently 
-		if( value.length > this.max_value )
-			return callback( false, false );		
-		
-		nM.__query( connection, [ 'set', user_key, flags, lifetime || 0 , value.length  ].join(' ') + $line_ending + value, { key: user_key, type: 'set' }, callback );
-	});
+		that.query( conn, [ 'set', key, flag, lifetime || 0 , value.length  ].join(' ') + $line_ending + value, { key: key, type: 'set' }, callback );
+	})	
 };
 
-nMemcached.prototype.set_multi = function( user_key, callback ){
+nMemcached.prototype.set_multi = function( key, callback ){
 	return callback( 'Command not implemented' );
 };
 
-nMemcached.prototype.add = function( user_key, value, lifetime, callback ){
+nMemcached.prototype.add = function( key, value, lifetime, callback ){
 	return callback( 'Command not implemented' );
 };
 
-nMemcached.prototype.replace = function( user_key, value, lifetime, callback ){
+nMemcached.prototype.replace = function( key, value, lifetime, callback ){
 	return callback( 'Command not implemented' );
 };
 
-nMemcached.prototype.append = function( user_key, value, lifetime, callback ){
+nMemcached.prototype.append = function( key, value, lifetime, callback ){
 	return callback( 'Command not implemented' );
 };
 
-nMemcached.prototype.prepend = function( user_key, value, lifetime, callback ){
+nMemcached.prototype.prepend = function( key, value, lifetime, callback ){
 	return callback( 'Command not implemented' );
 };
 
-nMemcached.prototype.cas = function( user_key, value, lifetime, callback ){
+nMemcached.prototype.cas = function( key, value, lifetime, callback ){
 	return callback( 'Command not implemented' );
 };
 
-nMemcached.prototype.del = function( user_key, callback ){
+nMemcached.prototype.del = function( key, callback ){
 	var nM = this;
 	
-	if( !nM.__validate_key( user_key ) )
+	if( !nM.__validate_key( key ) )
 		return;
 		
-	nM.get_connection( user_key, function( err, connection ){
+	nM.get_connection( key, function( err, connection ){
 		if( err )
 			return callback( 'Unable to start or retrieve a TCP connection', connection );
 		
-		nM.__query( connection, 'delete ' + user_key, callback );
+		nM.__query( connection, 'delete ' + key, callback );
 	});
 };
 
-nMemcached.prototype.del_multi = function( user_keys, callback ){
+nMemcached.prototype.del_multi = function( keys, callback ){
 	return callback( 'Command not implemented' );
 };
 
@@ -347,7 +386,7 @@ nMemcached.prototype.del_multi = function( user_keys, callback ){
 nMemcached.prototype.version = function( callback ){
 	var nM = this;
 	
-	if( !nM.__validate_key( user_key ) )
+	if( !nM.__validate_key( key ) )
 		return;
 		
 	nM.servers.forEach(function( server ){
@@ -360,7 +399,7 @@ nMemcached.prototype.version = function( callback ){
 nMemcached.prototype.stats = function( callback ){
 	var nM = this;
 	
-	if( !nM.__validate_key( user_key ) )
+	if( !nM.__validate_key( key ) )
 		return;
 	
 	nM.servers.forEach(function( server ){
