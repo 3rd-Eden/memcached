@@ -15,13 +15,7 @@ const $flags = {
 		COMPRESSEDBINARY: 5<<1
 	};
 const $errors = ['ERROR', 'NOT_FOUND', 'CLIENT_ERROR', 'SERVER_ERROR'];
-const $response = {
-		set: ['STORED', 'NOT_STORED', 'EXISTS'],
-		stats: ['STAT', 'END'],
-		del: ['DELETED'],
-		version: ['VERSION'],
-		flush: ['OK']
-	};
+const $end_responses = $errors.concat( [ 'OK', 'DELETED', 'VERSION', 'END', 'STORED', 'NOT_STORED', 'EXISTS' ] );
 const $empty = function(){};
 const $response_split = new RegExp();
 
@@ -97,6 +91,7 @@ nMemcached.prototype.fuse = function( options, ignoreUndefinedProps ){
 nMemcached.parsers = {
 	
 	// handles get requests, parses back the data to the correct format based on $flags provided
+	// it should also handle multiple VALUE's blocks before END\r\n is found
 	get: function( peices, query_config ){
 		var header = peices.shift(),
 			footer = peices.pop(),
@@ -129,9 +124,11 @@ nMemcached.prototype.response = function( data, connection ){
 	var response = data.toString().split( $line_ending ),
 		meta = connection.metadata.shift(),
 		size = response.pop();
-			
+
+	sys.puts( JSON.stringify( response ) );
+		
 	data = false;
-	
+		
 	// check for errors, do this early so we don't have to fully parse the contents if it's not needed
 	if( $errors.some( function( value ){ return response[0] === value || response[ size -1 ] === value } ) )
 		return meta.callback( "Memcached command produced an error", meta.query );
@@ -164,6 +161,7 @@ nMemcached.prototype.query = function( connection, query, query_config, callback
 	
 	// write the query to the net.Stream
 	connection.write( query + $line_ending );
+	connection.available = false;
 };
 
 // fetches or generates a new connection & connection pool for a server node
@@ -181,7 +179,7 @@ nMemcached.prototype.connect = function( node, callback ){
 			pool = this;
 		
 		// stores connection specific metadata
-		connection.metadata = [];		
+		connection.metadata = [];
 		
 		// the connection is ready for usage
 		connection.addListener( 'connect', function(){
@@ -193,6 +191,7 @@ nMemcached.prototype.connect = function( node, callback ){
 		
 		// the connect recieved data from the Memcached server
 		connection.addListener( 'data', function( data ){
+			this.available = true;
 			that.response( data, this );
 		});
 		
@@ -231,10 +230,8 @@ nMemcached.prototype.validate_arguments = function( args, min, max ){
 		err;
 	
 	// set a correct callback function
-	if( length == 1 ){
-		args[0] = typeof args[0] == 'function' ? args[1] : $empty;
-	}
-	
+	callback = args[ length - 1 ] = typeof args[length - 1 ] == 'function' ? args[length - 1 ] : $empty;
+		
 	// validate the argument size
 	if( length < min || length > max )
 		err = "Invalid arguments supplied, this function requires a minimum of " + min + " and maximum of " + max + " arguments";
@@ -301,12 +298,49 @@ nMemcached.prototype.get = function( key, callback ){
 	that.get_connection( key, function( err, conn ){
 		if( err ) return callback( err );
 		
-		that.query( conn, 'get ' + key, { key: key,	type: 'get' }, callback );
+		that.query( conn, 'get ' + key, { key: key, type: 'get' }, callback );
 	})
 };
 
 nMemcached.prototype.get_multi = function( keys, callback ){
-	return callback( 'Command not implemented' );
+	var that = this
+		server_map = {},
+		queue = [],
+		count, node;
+	
+	// Just validate the callback only at this point 
+	if( !that.validate_arguments( [callback], 1, 1 ) )
+		return;
+		
+	if( !Array.isArray( keys ) )
+		return callback( "The keys should be an array with strings" );
+	
+	// get all keys and map them to the correct server
+	keys.forEach(function( key ){
+		var server = that.hashring.get_node( key );
+		
+		if( server_map[ server ] )
+			server_map[ server ].push( key );
+		else
+			server_map[ server ] = [ key ];
+	});
+	
+	for( node in server_map ){
+		count++;
+		that.connect( node, function( err, conn ){
+			if( err ) return callback( err );
+			
+			that.query( conn, 'get ' + server_map[ node ].join( ' ' ), { key: key, type: 'get' }, function( err, value ){
+				count--;
+				
+				// if we have no more processing and everything is fired, send the set on it way
+				if(! count )
+					callback( false, queue );
+				else
+					queue.push( value );
+			});
+		})
+	}
 };
 
 nMemcached.prototype.gets = function( key, callback ){
