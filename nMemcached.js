@@ -6,7 +6,7 @@ var sys = require('sys'),
 	hashring = require('./lib/hashring').hashRing,
 	connectionPool = require('./lib/connectionPool').manager;
 
-const $line_ending = '\r\n'
+const $line_ending = '\r\n';
 const $flags = {
 		JSON: 1<<1,
 		COMPRESSION: 2<<1,
@@ -23,6 +23,7 @@ const $response = {
 		flush: ['OK']
 	};
 const $empty = function(){};
+const $response_split = new RegExp();
 
 var nMemcached = exports.client = function( memcached_servers, options ){
 	
@@ -176,7 +177,7 @@ nMemcached.prototype.connect = function( node, callback ){
 		
 	// no connections found, so create a new poolManager and add the connection constructor.
 	that.pool[ node ] = new connectionPool( node, that.max_connection_pool, function( callback ){
-		var connection = net.createConnection( servertkn[2], servertkn[1] ),
+		var connection = new net.Stream(),
 			pool = this;
 		
 		// stores connection specific metadata
@@ -186,7 +187,7 @@ nMemcached.prototype.connect = function( node, callback ){
 		connection.addListener( 'connect', function(){
 			// configure the connection to be open and stay open and push the data directly to the connection
 			this.setTimeout( 0 );
-			this.setNoDelay();
+			this.setNoDelay( true );
 			callback( false, this );
 		});
 		
@@ -210,7 +211,9 @@ nMemcached.prototype.connect = function( node, callback ){
 		connection.addListener( 'close', function(){
 			pool.remove( this );
 		});
-
+		
+		// everything is attached, connecting.. 1.. 2.. 3.. Open sesame
+		connection.connect( servertkn[2], servertkn[1] );
 		return connection;
 	});
 	
