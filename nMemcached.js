@@ -7,6 +7,7 @@ var sys = require('sys'),
 	connectionPool = require('./lib/connectionPool').manager;
 
 const $line_ending = '\r\n';
+const $line_length = $line_ending.length;
 const $flags = {
 		JSON: 1<<1,
 		COMPRESSION: 2<<1,
@@ -17,7 +18,11 @@ const $flags = {
 const $errors = ['ERROR', 'NOT_FOUND', 'CLIENT_ERROR', 'SERVER_ERROR'];
 const $end_responses = $errors.concat( [ 'OK', 'DELETED', 'VERSION', 'END', 'STORED', 'NOT_STORED', 'EXISTS' ] );
 const $empty = function(){};
-const $response_split = new RegExp();
+
+// regexps for captureing the data
+// get: ((VALUE\s(\w+)\s(\d+)\s(\d+)\s(.*)\s)+END)\s
+// stat: ((STAT\s(\w+)\s(.*)\s)+END)\s
+// verson: (VERSION\s(\d+)(?:\.)?(\d+)?(?:\.)?(\d+)?)\s
 
 var nMemcached = exports.client = function( memcached_servers, options ){
 	
@@ -93,6 +98,11 @@ nMemcached.parsers = {
 	// handles get requests, parses back the data to the correct format based on $flags provided
 	// it should also handle multiple VALUE's blocks before END\r\n is found
 	get: function( peices, query_config ){
+		// handles "END" respones
+		if( peices.length == 1 )
+			return peices;
+		
+		// handle VALUE responses
 		var header = peices.shift(),
 			footer = peices.pop(),
 			response = peices.join( $line_ending );
@@ -120,10 +130,10 @@ nMemcached.parsers = {
 };
 
 // handles the responses we recieve from the net.Stream
-nMemcached.prototype.response = function( data, connection ){
+nMemcached.prototype.response = function( data, connection, type ){
 	var response = data.toString().split( $line_ending ),
 		meta = connection.metadata.shift(),
-		size = response.pop();
+		size = response.length;
 
 	sys.puts( JSON.stringify( response ) );
 		
@@ -138,15 +148,71 @@ nMemcached.prototype.response = function( data, connection ){
 		data = nMemcached.parsers[ meta.type ]( response, meta, connection );
 	
 	// some Memcached command respond with a single statement, so we can just take advantage of that
-	if( !data && size == 1 )
-		data = $response[ meta.type ].indexOf( response[0] ) !== -1;
+	//if( !data && size == 1 )
+	//	data = $response[ meta.type ].indexOf( response[0] ) !== -1;
 	
 	// report back to the user, if the user
 	meta.callback( false, data || response );
 };
 
+nMemcached.prototype.readbuffer = function( data, connection ){
+	var buffer = data.toString(),
+		linebreak, command, ending;
+	
+	while( buffer.length ){
+		linebreak = buffer.indexOf( $line_ending );
+		
+		if( !linebreak )
+			break;
+		
+		// get the start of the command
+		command = buffer.substr( 0, linebreak );
+		
+		// determine what kind of reply we are dealing with
+		if( /^value/i.test( command ) ){
+			// find the end of the command
+			ending = buffer.indexOf( 'END\r\n' );
+			
+			// send response
+			this.response( buffer.substr( 0, ending ), connection, 'get' );
+			buffer = buffer.substr( ending, -1 );
+			continue;
+		}
+		
+		if( /^end/i.test( command ) ){
+			this.response( command , connection, 'get' );
+			buffer = buffer.substr( linebreak, -1 );
+			continue;
+		}
+		
+		if( /^stored/i.test( command )){
+			// find the end of the command
+			ending = buffer.indexOf( '\r\n' );
+			
+			// send response
+			this.response( buffer.substr( 0, ending ), connection, 'set' );
+			buffer = buffer.substr( ending, -1 );
+			continue;
+		}
+		
+		sys.puts("cmd:" + command );
+		
+		buffer = buffer.substr( linebreak, -1 );
+		
+		sys.puts("Remaining buffer ")
+		sys.puts("-----------------------------")
+		sys.puts(buffer);
+		sys.puts("-----------------------------")
+	}
+	
+	
+	//return this.response( data, connection );
+};
+
 // sends the actual query to memcached server
 nMemcached.prototype.query = function( connection, query, query_config, callback ){
+	sys.puts( query )
+	
 	// we have no connection, we are going to fail silently the server might be borked
 	if( !connection )
 		return callback( false, false );
@@ -161,7 +227,7 @@ nMemcached.prototype.query = function( connection, query, query_config, callback
 	
 	// write the query to the net.Stream
 	connection.write( query + $line_ending );
-	connection.available = false;
+	//connection.available = false;
 };
 
 // fetches or generates a new connection & connection pool for a server node
@@ -192,18 +258,18 @@ nMemcached.prototype.connect = function( node, callback ){
 		// the connect recieved data from the Memcached server
 		connection.addListener( 'data', function( data ){
 			this.available = true;
-			that.response( data, this );
+			that.readbuffer( data, this );
 		});
 		
 		// something happend to the Memcached serveer sends a 'FIN' packet, so we will just close the connection
 		connection.addListener( 'end', function(){
-			return this.destroy ? this.destroy() : false;
+			return this.end() ? this.end() : false;
 		});
 		
 		// something happend while connecting to the server
 		connection.addListener( 'error', function( error ){
 			that.death( node, error, callback );
-			return this.destroy ? this.destroy() : false;
+			return this.end ? this.end() : false;
 		});
 		
 		// connection no-longer in use, remove from our pool
@@ -238,11 +304,11 @@ nMemcached.prototype.validate_arguments = function( args, min, max ){
 	
 	// we could ofcourse do a args[1].toString(), but I feel it's up to the developer to provide us wit the
 	// correct arguments. You don't expect your car to run properly if you fill your tank with sand instead of gas.. 
-	if( !err && typeof args[0] !== 'string' )
+	if( !err && typeof args[0] !== 'string' && length > 1 )
 		err = 'The value of the key must be a string';
 	
 	// replace the key with a md5 if it's longer than the allowed size, if not throw an error	
-	if( !err && args[0].length > this.max_key ){
+	if( !err && args[0].length > this.max_key && length > 1 ){
 		if( !this.compress_keys )
 			err = 'The length of the key is to long. It should not be greater than ' + this.max_key;
 		else
@@ -277,7 +343,7 @@ nMemcached.prototype.death = function( node, err, callback ){
 // shuts down all current connections
 nMemcached.prototype.disconnect = function(){
 	for( var key in this.pool )
-		this.pool[ key ].destroy();
+		this.pool[ key ].end();
 	
 };
 
@@ -290,6 +356,11 @@ nMemcached.prototype.disconnect = function(){
 
 */
 nMemcached.prototype.get = function( key, callback ){
+	
+	// handles get() with array as keys as proxy to get_multi
+	if( Array.isArray( key ) )
+		return this.get_multi.apply( this, arguments );
+	
 	var that = this;
 	if( !that.validate_arguments( arguments, 2, 2 ) )
 		return;
@@ -303,15 +374,14 @@ nMemcached.prototype.get = function( key, callback ){
 };
 
 nMemcached.prototype.get_multi = function( keys, callback ){
-	var that = this
+	var that = this,
 		server_map = {},
-		queue = [],
-		count, node;
+		count = 0, node;
 	
 	// Just validate the callback only at this point 
 	if( !that.validate_arguments( [callback], 1, 1 ) )
 		return;
-		
+	
 	if( !Array.isArray( keys ) )
 		return callback( "The keys should be an array with strings" );
 	
@@ -326,30 +396,26 @@ nMemcached.prototype.get_multi = function( keys, callback ){
 	});
 	
 	for( node in server_map ){
-		count++;
 		that.connect( node, function( err, conn ){
 			if( err ) return callback( err );
 			
-			that.query( conn, 'get ' + server_map[ node ].join( ' ' ), { key: key, type: 'get' }, function( err, value ){
-				count--;
-				
-				// if we have no more processing and everything is fired, send the set on it way
-				if(! count )
-					callback( false, queue );
-				else
-					queue.push( value );
-			});
+			that.query( conn, 'get ' + server_map[ node ].join( ' ' ), { key: server_map[ node ], type: 'get' }, callback);
 		})
 	}
 };
 
 nMemcached.prototype.gets = function( key, callback ){
-	return callback( 'Command not implemented' );
+	return this.get.apply( this, arguments )
 };
 
 nMemcached.prototype.set = function( key, value, lifetime, callback ){
+	
+	// handles get() with array as keys as proxy to get_multi
+	if( Array.isArray( key ) )
+		return this.get_multi.apply( this, arguments );
+	
 	var that = this;
-	if( !that.validate_arguments( arguments, 4, 4 ) )
+	if( !that.validate_arguments( arguments, 3, 4 ) )
 		return;
 	
 	// fetch the correct connection
