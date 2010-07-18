@@ -1,5 +1,8 @@
 #nMemcached
 
+	NOTE: This module is not yet ready for production usage. If I called it stable i would lieing ;)
+	WORKING DRAFT
+
 nMemcached is a fully featured Memcached client for node.js. nMemcached is build with scaling, high availability and exceptional performance in mind. We use consistent hashing to store the data across different nodes. Consistent hashing is a scheme that provides a hash table functionality in a way that adding or removing a server node does not significantly change the mapping of the keys to server nodes. The algorithm that is used for consistent hashing is the same as libketama.
 
 There are different ways to handle errors for example, when a server becomes unavailable you can configure the client to see all requests to that server as cache misses until it goes up again. It's also possible to automatically remove the affected server from the consistent hashing algorithm or provide nMemcached with a failover server that can take the place of the unresponsive server.
@@ -97,7 +100,8 @@ There are `5` different events that the nMemcached client emits when connection 
 * `reconnected`: successfully reconnected to the memcached server.
 * `remove`: removing the server from our consistent hashing.
 
-Example
+Example implementations:
+
 	var memcached = new nMemcached([ '192.168.0.102:11212', '192.168.0.103:11212' ]);
 	memcached.on('failure', function( details ){ sys.error( "Server " + details.server + "went down due to: " + details.messages.join( '' ) ) });
 	memcached.on('reconnecting', function( details ){ sys.debug( "Total downtime caused by server " + details.server + " :" + details.totalDownTime + "ms")})
