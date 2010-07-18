@@ -10,7 +10,10 @@ The client is configurable on different levels. There's a global configuration t
 
 ## Setting up the client
 
-The constructor of the nMemcached client take 2 different arguments `server locations` and `options`.
+The constructor of the nMemcached client take 2 different arguments `server locations` and `options`. Syntax:
+
+	var nMemcached = require('nMemcached').Client;
+	var memcached = new nMemcached(Server locations, options);
 
 ### Server locations
 The server locations is designed to work with different formats. These formats are all internally parsed to the correct format so our consistent hashing scheme can work with it. You can either use:
@@ -30,7 +33,7 @@ The server locations is designed to work with different formats. These formats a
 	the array structure all servers would have the same weight in the consistent hashing scheme. Spreading the
 	keys 33/33/33 over the servers. But as server 2 has more memory available you might want to give it more weight
 	so more keys get stored on that server. When you are using a object, the `key` should represent the server
-	location and the value the weight of the server. By default all servers have a weight of 1. 
+	location syntax and the value the weight of the server. By default all servers have a weight of 1. 
 	`{ '192.168.0.102:11212': 1, '192.168.0.103:11212': 2, '192.168.0.104:11212': 1 }` would generate a 25/50/25 
 	distribution of the keys.
 
@@ -49,7 +52,7 @@ There 2 kinds of options that can be configured. A global configuration that wil
 * `max_value`: *1048576*, the max size of a value that is allowed by the Memcached server.
 * `pool_size`: *10*, the maximum connections we can allocate in our connection pool.
 * `reconnect`: *18000000*, when the server is marked as dead we will attempt to reconnect every x milliseconds.
-* `retrys`: *5*, amount of tries before we mark the server as dead.
+* `retries`: *5*, amount of tries before we mark the server as dead.
 * `retry`: *30000*, timeout between each retry in x milliseconds
 * `remove`: *false*, when the server is marked as dead you can remove it from the pool so all other will receive the keys instead.
 * `failOverServers`: *undefined*, the ability use these servers as failover when the dead server get's removed from the consistent hashing scheme. This must be an array of servers confirm the server_locations specification.
@@ -58,4 +61,43 @@ There 2 kinds of options that can be configured. A global configuration that wil
 
 Example usage:
 
-	var memcache = new nMemcached('localhost:11212', {retrys:10,retry:10000,remove:true,failOverServers:['192.168.0.103:11212']});
+	var memcache = new nMemcached('localhost:11212', {retries:10,retry:10000,remove:true,failOverServers:['192.168.0.103:11212']});
+	
+## Events
+
+When connection issues occur we send out different notifications using the `EventEmitter` protocol. This can be useful for logging, notification and debugging purposes. Each event will receive details Object containing detailed information about the issues that occurred. 
+
+### Details Object
+
+The details Object contains the various of error messages that caused, the following 3 will always be present in all error events:
+
+* `server`: the server where the issue occured on
+* `tokens`: a array of the parsed server string in `[port, hostname]` format.
+* `messages`: a array containing all error messages that this server received. As messages are added to the array using .push(), the first issue will at the beginning and the latest error at the end of the array.
+
+The following properties depend on the type of event that is send. If we are still in our retry phase the details will also contain:
+
+* `retries`: the amount of retries left before we mark the server as dead.
+* `totalRetries`: the total amount of retries we did on this server, as when the server has been reconnected after it's dead the `retries` will be rest to defaults and messages will be removed.
+
+If the server is dead these details will be added:
+
+* `totalReconnectsAttempted`: the total reconnects we have attempted. This is the success and failure combined.
+* `totalReconnectsSuccess`: the total successful reconnects we have made.
+* `totalReconnectsFailed`: the total failed reconnects we have made.
+* `totalDownTime`: the total down time that was generated. Formula: ( totalReconnectsFailed * reconnect_timeout ) + ( totalRetries * retry_timeout).
+
+### Events
+
+There are `5` different events that the nMemcached client emits when connection issues occur. 
+
+* `issue`: a issue occurred on one a server, we are going to attempt a retry next.
+* `failure`: a server has been marked as failure or dead.
+* `reconnecting`: we are going to attempt to reconnect the to the failed server.
+* `reconnected`: successfully reconnected to the memcached server.
+* `remove`: removing the server from our consistent hashing.
+
+Example
+	var memcached = new nMemcached([ '192.168.0.102:11212', '192.168.0.103:11212' ]);
+	memcached.on('failure', function( details ){ sys.error( "Server " + details.server + "went down due to: " + details.messages.join( '' ) ) });
+	memcached.on('reconnecting', function( details ){ sys.debug( "Total downtime caused by server " + details.server + " :" + details.totalDownTime + "ms")})
