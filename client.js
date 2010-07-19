@@ -13,7 +13,7 @@ exports.Client = function Client( args, options ){
 	var servers = [],
 		weights = {},
 		key;
-	
+
 	// parse down the connection arguments	
 	switch( Object.prototype.toString.call( args ) ){
 		case '[object String]':
@@ -27,12 +27,12 @@ exports.Client = function Client( args, options ){
 			servers = args;
 			break;
 	}
-	
+
 	// merge with global and user config
 	Utils.merge( this, Client.config );
 	Utils.merge( this, options );
 	EventEmitter.call( this );
-	
+
 	this.servers = servers;
 	this.HashRing = new HashRing( servers, weights );
 	this.connections = [];
@@ -41,36 +41,39 @@ exports.Client = function Client( args, options ){
 
 // Allows users to configure the memcached globally or per memcached client
 Client.config = {
-	max_key_size: 250,			 // max keysize allowed by Memcached
+	max_key_size: 251,			 // max keysize allowed by Memcached
 	max_expiration: 2592000,	 // max expiration duration allowed by Memcached
 	max_value: 1048576,			 // max length of value allowed by Memcached
-	
+
 	pool_size: 10,				 // maximal parallel connections
 	reconnect: 18000000,		 // if dead, attempt reconnect each xx ms
 	retries: 5,					 // amount of retries before server is dead
 	retry: 30000,				 // timeout between retries, all call will be marked as cache miss
 	remove: false,				 // remove server if dead if false, we will attempt to reconnect
-	
+
 	compression_threshold: 10240,// only than will compression be usefull
 	key_compression: true		 // compress keys if they are to large (md5)
 };
 
 // There some functions we don't want users to touch so we scope them
 (function( nMemcached ){
-	const LINEBREAK				= '\r\n',
+	const FLUSH					= 1E3,
+		  BUFFER				= 1E2,
+		  CONTINUE				= 1E1
+		  LINEBREAK				= '\r\n',
 		  FLAG_JSON 			= 1<<1,
 		  FLAG_COMPRESSION 		= 2<<1,
 		  FLAG_JCOMPRESSION 	= 3<<1,
 		  FLAG_BINARY 			= 4<<1,
 		  FLAG_COMPRESSEDBINARY = 5<<1,
 		  FLAG_ESCAPED			= 6<<1;
-	
+
 	var memcached = nMemcached.prototype = new EventEmitter;
-	
+
 	memcached.connect = function( server, callback ){
 		if( server in this.issues && this.issues[ server ].failed )
 			return callback( false, false );
-			
+		
 		if( server in this.connections )
 			return this.connections[ server ].allocate( callback );
 		
@@ -93,7 +96,7 @@ Client.config = {
 				connect	: function(){ callback( false, this ) },
 				close	: function(){ Manager.remove( this ) },
 				error	: function( err ){ memcached.connectionIssue( error, S, callback ) },
-				data	: memcached.rawDataReceived,
+				data	: curry( memcached, memcached.rawDataReceived, S ),
 				end		: S.end
 			});
 			
@@ -168,6 +171,106 @@ Client.config = {
 		this.connections.forEach(function( Manager ){ Manager.free(0) });
 	};
 	
+	memcached.rawDataReceived.parsers = {
+		// handle error respones
+		NOT_FOUND: 		function( tokens, dataSet, err ){ return [ CONTINUE, false ] },
+		NOT_STORED: 	function( tokens, dataSet, err ){ return [ CONTINUE, false ] },
+		ERROR: 			function( tokens, dataSet, err ){ return [ CONTINUE, false ] },
+		CLIENT_ERROR: 	function( tokens, dataSet, err ){ return [ CONTINUE, false ] },
+		SERVER_ERROR: 	function( tokens, dataSet, err ){ return [ CONTINUE, false ] },
+		
+		// keyword based responses
+		STORED: 		function( tokens, dataSet ){ return [ CONTINUE, true ] },
+		DELETED: 		function( tokens, dataSet ){ return [ CONTINUE, true ] },
+		OK: 			function( tokens, dataSet ){ return [ CONTINUE, true ] },
+		EXISTS: 		function( tokens, dataSet ){ return [ CONTINUE, true ] },
+		END: 			function( tokens, dataSet ){ return [ FLUSH, true ] },
+		
+		// value parsing:
+		VALUE: 			function( tokens, dataSet ){},
+		STAT: 			function( tokens, dataSet ){},
+		VERSION:		function( tokens, dataSet ){
+							var version_tokens = /(\d+)(?:\.)(\d+)(?:\.)(\d+)$/.exec( peices.shift() );
+							return [ CONTINUE, 
+									{ 
+										version:version_tokens[0],
+										major: 	version_tokens[1] || 0,
+										minor: 	version_tokens[2] || 0,
+										bugfix: version_tokens[3] || 0
+									}];
+						},
+		
+		// result set parsing
+		STATS: function( resultSet ){}
+	};
 	
+	memcached.rawDataReceived.commandReceived = new RegExp( '^(?:' + Object.keys( memcached.rawDataReceived.parsers ).join( '|' ) + ')' );
+	
+	memcached.rawDataReceived = function( Buffer, S ){
+		var queue = [], buffer_chunks = Buffer.toString().split( LINEBREAK ),
+			
+			parsers = memcached.rawDataReceived.parsers,
+			commandReceived = memcached.rawDataReceived.commandReceived,
+			
+			token, tokenSet, command, dataSet = '', resultSet, metaData;
+			
+		Buffer.pop(); // removes last empty item because all commands are ended with \r\n
+		
+		while( buffer_chunks.length ){
+			token = buffer_chunks.pop();
+			tokenSet = token.split( ' ' );
+			
+			// check for dedicated parser
+			if( parsers[ tokenSet[0] ] ){
+				/* @TODO gather the dataSet results, this should be fairly easy by doing a lookahead of the next piece of buffer
+					and if it's not a command add it to our dataSet
+				 	while( buffer_chunks.length ){
+						if( commandReceived.test( buffer_chunks[0] ) )
+							break;
+						
+						dataSet += ( LINEBREAK + buffer_chunks.pop() );
+						
+					}
+				
+				*/
+				
+				resultSet = parsers[ tokenSet[0] ]( tokenSet, dataset || token, err, queue );
+				
+				switch( resultSet.pop() ){
+					case BUFFER:
+						break;
+						
+					case FLUSH:
+						metaData = S.metaData.shift();
+						resultSet = queue;
+						
+						// see if optional parsing needs to be applied to make the result set more readable
+						if( parsers[ metaData.type ] )
+							resultSet = parsers[ metaData.type ]( resultSet, err );
+							
+						metaData.callback.call( metaData, [ err, resultSet ] );
+						queue.length = 0;
+						err = false;
+						break;
+						
+					default:
+						metaData = S.metaData.shift();
+						metaData.callback.call( metaData, [ err, queue ] );
+						err = false;
+						break;
+				}
+			} else {
+				// handle unkown responses
+				metaData = S.metaData.shift();
+				metaData.callback.call( metaData, [ 'Unknown response from the memcached server: ' + token, false ] );
+			}
+			
+			// cleanup
+			dataSet = ''
+			tokenSet = undefined;
+			metaData = undefined;
+			command = undefined;
+		}
+	};
 	
 })( Client )
