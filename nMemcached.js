@@ -4,12 +4,15 @@ var EventEmitter = require('events').EventEmitter,
 	CreateHash	 = require('crypto').createHash;
 
 var HashRing 	 = require('./lib/hashring').HashRing,
-	Connections  = require('./lib/connection'),
-	Utils		 = require('./lib/utis'),
+	Connection	 = require('./lib/connection'),
+	Utils		 = require('./lib/utils'),
+	Compression	 = require('./lib/zip'),
 	Manager		 = Connection.Manager,
 	IssueLog	 = Connection.IssueLog;
 
-exports.Client = function Client( args, options ){
+exports.Client = Client;
+
+function Client( args, options ){
 	var servers = [],
 		weights = {},
 		key;
@@ -34,7 +37,7 @@ exports.Client = function Client( args, options ){
 	EventEmitter.call( this );
 
 	this.servers = servers;
-	this.HashRing = new HashRing( servers, weights );
+	this.HashRing = new HashRing( servers, weights, this.algorithm );
 	this.connections = [];
 	this.issues = [];
 };
@@ -44,6 +47,8 @@ Client.config = {
 	max_key_size: 251,			 // max keysize allowed by Memcached
 	max_expiration: 2592000,	 // max expiration duration allowed by Memcached
 	max_value: 1048576,			 // max length of value allowed by Memcached
+	
+	algorithm: 'md5',			 // hashing algorithm that is used for key mapping  
 
 	pool_size: 10,				 // maximal parallel connections
 	reconnect: 18000000,		 // if dead, attempt reconnect each xx ms
@@ -59,7 +64,7 @@ Client.config = {
 (function( nMemcached ){
 	const FLUSH					= 1E3,
 		  BUFFER				= 1E2,
-		  CONTINUE				= 1E1
+		  CONTINUE				= 1E1,
 		  LINEBREAK				= '\r\n',
 		  FLAG_JSON 			= 1<<1,
 		  FLAG_COMPRESSION 		= 2<<1,
@@ -171,7 +176,9 @@ Client.config = {
 		this.connections.forEach(function( Manager ){ Manager.free(0) });
 	};
 	
-	memcached.rawDataReceived.parsers = {
+	// these do not need to be publicly available as it's one of the most important
+	// parts of the whole client.
+	var parsers = {
 		// handle error respones
 		NOT_FOUND: 		function( tokens, dataSet, err ){ return [ CONTINUE, false ] },
 		NOT_STORED: 	function( tokens, dataSet, err ){ return [ CONTINUE, false ] },
@@ -187,8 +194,8 @@ Client.config = {
 		END: 			function( tokens, dataSet ){ return [ FLUSH, true ] },
 		
 		// value parsing:
-		VALUE: 			function( tokens, dataSet ){},
-		STAT: 			function( tokens, dataSet ){},
+		VALUE: 			function( tokens, dataSet ){ return [ BUFFER, true ] },
+		STAT: 			function( tokens, dataSet ){ return [ BUFFER, true ] },
 		VERSION:		function( tokens, dataSet ){
 							var version_tokens = /(\d+)(?:\.)(\d+)(?:\.)(\d+)$/.exec( peices.shift() );
 							return [ CONTINUE, 
@@ -201,17 +208,12 @@ Client.config = {
 						},
 		
 		// result set parsing
-		STATS: function( resultSet ){}
-	};
-	
-	memcached.rawDataReceived.commandReceived = new RegExp( '^(?:' + Object.keys( memcached.rawDataReceived.parsers ).join( '|' ) + ')' );
+		stats: function( resultSet ){}
+	},
+	commandReceived = new RegExp( '^(?:' + Object.keys( parsers ).join( '|' ) + ')' );
 	
 	memcached.rawDataReceived = function( Buffer, S ){
 		var queue = [], buffer_chunks = Buffer.toString().split( LINEBREAK ),
-			
-			parsers = memcached.rawDataReceived.parsers,
-			commandReceived = memcached.rawDataReceived.commandReceived,
-			
 			token, tokenSet, command, dataSet = '', resultSet, metaData;
 			
 		Buffer.pop(); // removes last empty item because all commands are ended with \r\n
@@ -222,17 +224,14 @@ Client.config = {
 			
 			// check for dedicated parser
 			if( parsers[ tokenSet[0] ] ){
-				/* @TODO gather the dataSet results, this should be fairly easy by doing a lookahead of the next piece of buffer
-					and if it's not a command add it to our dataSet
-				 	while( buffer_chunks.length ){
-						if( commandReceived.test( buffer_chunks[0] ) )
-							break;
-						
-						dataSet += ( LINEBREAK + buffer_chunks.pop() );
-						
-					}
 				
-				*/
+				// fetch the response content
+				while( buffer_chunks.length ){
+					if( commandReceived.test( buffer_chunks[0] ) )
+						break;
+					
+					dataSet += ( LINEBREAK + buffer_chunks.pop() );
+				}
 				
 				resultSet = parsers[ tokenSet[0] ]( tokenSet, dataset || token, err, queue );
 				
