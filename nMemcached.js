@@ -113,6 +113,8 @@ Client.config = {
 	};
 	
 	memcached.command = function( query ){
+		if( !Utils.validate( query ) ) return;
+		
 		var server = this.HashRing.get_node( query.key );
 		
 		if( server in this.issues && this.issues[ server ].failed )
@@ -230,10 +232,10 @@ Client.config = {
 					if( commandReceived.test( buffer_chunks[0] ) )
 						break;
 					
-					dataSet += ( LINEBREAK + buffer_chunks.pop() );
+					dataSet += ( dataSet.length > 0 ? LINEBREAK : '' ) + buffer_chunks.pop();
 				}
 				
-				resultSet = parsers[ tokenSet[0] ]( tokenSet, dataset || token, err, queue );
+				resultSet = parsers[ tokenSet[0] ]( tokenSet, dataSet || token, err, queue );
 				
 				switch( resultSet.pop() ){
 					case BUFFER:
@@ -272,4 +274,19 @@ Client.config = {
 		}
 	};
 	
+	memcached.get = function( key, callback ){
+		this.command({
+			key: key,
+			callback: callback,
+			
+			// validate the arguments
+			validate: [
+				[ "key", String ],
+				[ "callback", Number ]
+			],
+			
+			type: 'get',
+			command: 'get ' + key
+		});
+	};
 })( Client )
