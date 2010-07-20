@@ -199,7 +199,35 @@ Client.config = {
 		END: 			function( tokens, dataSet ){ return [ FLUSH, true ] },
 		
 		// value parsing:
-		VALUE: 			function( tokens, dataSet ){ return [ BUFFER, true ] },
+		VALUE: 			function( tokens, dataSet, err, queue ){
+							var key = tokens[1], flag = tokens[2], expire = tokens[3],
+								tmp;
+							
+							switch( +flag ){
+								case FLAG_JSON:
+									dataSet = JSON.parse( dataSet );
+									break;
+								
+								case FLAG_COMPRESSION:
+									dataSet = Compression.Inflate( dataSet );
+									break;
+								
+								case FLAG_JCOMPRESSION:
+									dataSet = JSON.parse( Compression.Inflate( dataSet ) );
+									break;
+								
+								case FLAG_BINARY:
+									tmp = new Buffer( dataSet.length );
+									tmp.write( dataSet, 0, 'ASCII' );
+									dataSet = tmp;
+									break;
+									
+							}
+							
+							// Add to queue as multiple get key key key key key returns multiple values
+							queue.push( dataSet );
+							return [ BUFFER ] 
+						},
 		STAT: 			function( tokens, dataSet ){ return [ BUFFER, true ] },
 		VERSION:		function( tokens, dataSet ){
 							var version_tokens = /(\d+)(?:\.)(\d+)(?:\.)(\d+)$/.exec( tokens.pop() );
@@ -224,9 +252,9 @@ Client.config = {
 			token, tokenSet, command, dataSet = '', resultSet, metaData, err;
 					
 		buffer_chunks.pop();
-		
+				
 		while( buffer_chunks.length ){
-			token = buffer_chunks.pop();
+			token = buffer_chunks.shift();
 			tokenSet = token.split( ' ' );
 			
 			// check for dedicated parser
@@ -237,14 +265,13 @@ Client.config = {
 					if( commandReceived.test( buffer_chunks[0] ) )
 						break;
 					
-					dataSet += ( dataSet.length > 0 ? LINEBREAK : '' ) + buffer_chunks.pop();
-				}
-				
+					dataSet += ( dataSet.length > 0 ? LINEBREAK : '' ) + buffer_chunks.shift();
+				};
+								
 				resultSet = parsers[ tokenSet[0] ]( tokenSet, dataSet || token, err, queue );
 				
 				switch( resultSet.shift() ){
 					case BUFFER:
-						queue.push( resultSet[0] );
 						break;
 						
 					case FLUSH:
@@ -290,7 +317,7 @@ Client.config = {
 			key: key, callback: callback,
 			
 			// validate the arguments
-			validate: [[ "key", String ], [ "callback", Function ]],
+			validate: [[ 'key', String ], [ 'callback', Function ]],
 			
 			// used for the query
 			type: 'get',
@@ -306,7 +333,7 @@ Client.config = {
 		
 		if( Buffer.isBuffer( value ) ){
 			flag = FLAG_BINARY;
-			value = value.toString();
+			value = value.toString( 'ASCII' );
 		
 		} else if( typeof value !== 'string' ){
 			flag = FLAG_JSON;
@@ -322,7 +349,7 @@ Client.config = {
 			key: key, callback: callback, lifetime: lifetime,
 			
 			// validate the arguments
-			validate: [[ "key", String ], [ "lifetime", Number ], [ "callback", Function ]],
+			validate: [[ 'key', String ], [ 'lifetime', Number ], [ 'callback', Function ]],
 			
 			type: 'set',
 			command: [ 'set', key, flag, lifetime, value.length ].join( ' ' ) + LINEBREAK + value
@@ -331,10 +358,10 @@ Client.config = {
 	
 	memcached.version = function( callback ){
 		this.command({
-			key: "hello", callback: callback,
+			key: 'hello', callback: callback,
 			
 			// validate the arguments
-			validate: [[ "callback", Function ]],
+			validate: [[ 'callback', Function ]],
 			
 			type: 'version',
 			command: 'version'
