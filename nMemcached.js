@@ -38,7 +38,7 @@ function Client( args, options ){
 
 	this.servers = servers;
 	this.HashRing = new HashRing( servers, weights, this.algorithm );
-	this.connections = [];
+	this.connections = {};
 	this.issues = [];
 };
 
@@ -102,12 +102,13 @@ Client.config = {
 				connect	: function(){ callback( false, this ) },
 				close	: function(){ Manager.remove( this ) },
 				error	: function( err ){ memcached.connectionIssue( error, S, callback ) },
-				data	: curry( memcached, memcached.rawDataReceived, S ),
+				data	: Utils.curry( memcached, memcached.rawDataReceived, S ),
 				end		: S.end
 			});
 			
 			// connect the net.Stream [ port, hostname ]
 			S.connect.apply( S, server_tokens );
+			return S;
 		});
 		
 		this.connections[ server ].allocate( callback );
@@ -175,8 +176,9 @@ Client.config = {
 		issues.log( error );
 	};
 	
-	memcached.disconnect = function(){
-		this.connections.forEach(function( Manager ){ Manager.free(0) });
+	memcached.end = function(){
+		var memcached = this;
+		Object.keys( this.connections ).forEach(function( key ){ memcached.connections[ key ].free(0) });
 	};
 	
 	// these do not need to be publicly available as it's one of the most important
@@ -200,7 +202,7 @@ Client.config = {
 		VALUE: 			function( tokens, dataSet ){ return [ BUFFER, true ] },
 		STAT: 			function( tokens, dataSet ){ return [ BUFFER, true ] },
 		VERSION:		function( tokens, dataSet ){
-							var version_tokens = /(\d+)(?:\.)(\d+)(?:\.)(\d+)$/.exec( peices.shift() );
+							var version_tokens = /(\d+)(?:\.)(\d+)(?:\.)(\d+)$/.exec( tokens.pop() );
 							return [ CONTINUE, 
 									{ 
 										version:version_tokens[0],
@@ -208,18 +210,20 @@ Client.config = {
 										minor: 	version_tokens[2] || 0,
 										bugfix: version_tokens[3] || 0
 									}];
-						},
-		
+						}
+	},
+	// parses down result sets
+	resultParsers = {
 		// result set parsing
-		stats: function( resultSet ){}
+		stats: function( resultSet ){ return resultSet }
 	},
 	commandReceived = new RegExp( '^(?:' + Object.keys( parsers ).join( '|' ) + ')' );
-	
-	memcached.rawDataReceived = function( Buffer, S ){
-		var queue = [], buffer_chunks = Buffer.toString().split( LINEBREAK ),
-			token, tokenSet, command, dataSet = '', resultSet, metaData;
-			
-		Buffer.pop(); // removes last empty item because all commands are ended with \r\n
+		
+	memcached.rawDataReceived = function( S, BufferStream ){
+		var queue = [], buffer_chunks = BufferStream.toString().split( LINEBREAK ),
+			token, tokenSet, command, dataSet = '', resultSet, metaData, err;
+					
+		buffer_chunks.pop();
 		
 		while( buffer_chunks.length ){
 			token = buffer_chunks.pop();
@@ -238,8 +242,9 @@ Client.config = {
 				
 				resultSet = parsers[ tokenSet[0] ]( tokenSet, dataSet || token, err, queue );
 				
-				switch( resultSet.pop() ){
+				switch( resultSet.shift() ){
 					case BUFFER:
+						queue.push( resultSet[0] );
 						break;
 						
 					case FLUSH:
@@ -247,24 +252,25 @@ Client.config = {
 						resultSet = queue;
 						
 						// see if optional parsing needs to be applied to make the result set more readable
-						if( parsers[ metaData.type ] )
-							resultSet = parsers[ metaData.type ]( resultSet, err );
+						if( resultParsers[ metaData.type ] )
+							resultSet = resultParsers[ metaData.type ]( resultSet, err );
 							
-						metaData.callback.call( metaData, [ err, resultSet ] );
+						metaData.callback.call( metaData, err, queue );
 						queue.length = 0;
 						err = false;
 						break;
 						
+					case CONTINUE:	
 					default:
 						metaData = S.metaData.shift();
-						metaData.callback.call( metaData, [ err, queue ] );
+						metaData.callback.call( metaData, err, resultSet[0] );
 						err = false;
 						break;
 				}
 			} else {
 				// handle unkown responses
 				metaData = S.metaData.shift();
-				metaData.callback.call( metaData, [ 'Unknown response from the memcached server: ' + token, false ] );
+				metaData.callback.call( metaData, 'Unknown response from the memcached server: ' + token, false );
 			}
 			
 			// cleanup
@@ -272,7 +278,7 @@ Client.config = {
 			tokenSet = undefined;
 			metaData = undefined;
 			command = undefined;
-		}
+		};
 	};
 	
 	// get, gets all the same
@@ -320,6 +326,18 @@ Client.config = {
 			
 			type: 'set',
 			command: [ 'set', key, flag, lifetime, value.length ].join( ' ' ) + LINEBREAK + value
+		})
+	};
+	
+	memcached.version = function( callback ){
+		this.command({
+			key: "hello", callback: callback,
+			
+			// validate the arguments
+			validate: [[ "callback", Function ]],
+			
+			type: 'version',
+			command: 'version'
 		})
 	};
 })( Client )
