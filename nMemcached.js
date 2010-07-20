@@ -308,7 +308,8 @@ Client.config = {
 		}
 		
 		if( value.length > this.compression_threshold ){
-			flag = flag == FLAG_JSON ? FLAG_COMPRESSED_JSON
+			flag = flag == FLAG_JSON ? FLAG_JCOMPRESSION : flag == FLAG_BINARY ? FLAG_BCOMPRESSION : FLAG_COMPRESSION;
+			value = Compression.Deflate( value );
 		}
 		
 		this.command({
