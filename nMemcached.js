@@ -73,7 +73,8 @@ Client.config = {
 		  FLAG_COMPRESSEDBINARY = 5<<1,
 		  FLAG_ESCAPED			= 6<<1;
 
-	var memcached = nMemcached.prototype = new EventEmitter;
+	var memcached = nMemcached.prototype = new EventEmitter,
+		undefined;
 
 	memcached.connect = function( server, callback ){
 		if( server in this.issues && this.issues[ server ].failed )
@@ -113,7 +114,7 @@ Client.config = {
 	};
 	
 	memcached.command = function( query ){
-		if( !Utils.validate( query ) ) return;
+		if( !Utils.validate_arg( query ))  return;
 		
 		var server = this.HashRing.get_node( query.key );
 		
@@ -276,15 +277,13 @@ Client.config = {
 	
 	memcached.get = function( key, callback ){
 		this.command({
-			key: key,
-			callback: callback,
+			// user data
+			key: key, callback: callback,
 			
 			// validate the arguments
-			validate: [
-				[ "key", String ],
-				[ "callback", Number ]
-			],
+			validate: [[ "key", String ], [ "callback", Function ]],
 			
+			// used for the query
 			type: 'get',
 			command: 'get ' + key
 		});
