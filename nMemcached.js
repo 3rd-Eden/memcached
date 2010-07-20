@@ -70,7 +70,7 @@ Client.config = {
 		  FLAG_COMPRESSION 		= 2<<1,
 		  FLAG_JCOMPRESSION 	= 3<<1,
 		  FLAG_BINARY 			= 4<<1,
-		  FLAG_COMPRESSEDBINARY = 5<<1,
+		  FLAG_BCOMPRESSION		= 5<<1,
 		  FLAG_ESCAPED			= 6<<1;
 
 	var memcached = nMemcached.prototype = new EventEmitter,
@@ -275,9 +275,12 @@ Client.config = {
 		}
 	};
 	
-	memcached.get = function( key, callback ){
+	// get, gets all the same
+	memcached.gets = memcached.get = function( key, callback ){
+		if( Array.isArray( key ) )
+			return this.get_multi.apply( this, arguments );
+			
 		this.command({
-			// user data
 			key: key, callback: callback,
 			
 			// validate the arguments
@@ -287,5 +290,35 @@ Client.config = {
 			type: 'get',
 			command: 'get ' + key
 		});
+	};
+	
+	memcached.set = function( key, value, lifetime, callback ){
+		if( Array.isArray( key ) )
+			return this.set_multi.apply( this, arguments );
+		
+		var flag = 0;
+		
+		if( Buffer.isBuffer( value ) ){
+			flag = FLAG_BINARY;
+			value = value.toString();
+		
+		} else if( typeof value !== 'string' ){
+			flag = FLAG_JSON;
+			value = JSON.stringify( value );
+		}
+		
+		if( value.length > this.compression_threshold ){
+			flag = flag == FLAG_JSON ? FLAG_COMPRESSED_JSON
+		}
+		
+		this.command({
+			key: key, callback: callback, lifetime: lifetime,
+			
+			// validate the arguments
+			validate: [[ "key", String ], [ "lifetime", Number ], [ "callback", Function ]],
+			
+			type: 'set',
+			command: [ 'set', key, flag, lifetime, value.length ].join( ' ' ) + LINEBREAK + value
+		})
 	};
 })( Client )
