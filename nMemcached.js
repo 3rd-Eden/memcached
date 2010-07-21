@@ -8,7 +8,7 @@ var HashRing 	 = require('./lib/hashring').HashRing,
 	Compression	 = require('./lib/zip'),
 	Manager		 = Connection.Manager,
 	IssueLog	 = Connection.IssueLog,
-	Ping		 = Connection.Ping;
+	Available	 = Connection.Available;
 
 exports.Client = Client;
 
@@ -87,38 +87,31 @@ Client.config = {
 			memcached = this;
 			server_tokens.pop();
 		
-		// The node.js socket doesn't give good enough responses to determin if we have a working connection or not
-		// so we ping, before we aquire a new working connection
-		Ping( server_tokens[1], function( err ){
-			if( err )
-				return memcached.connectionIssue( err, { tokens:server_tokens, server:server }, callback );
+		this.connections[ server ] = new Manager( server, this.pool_size, function( callback ){
+			var S = new Stream,
+				Manager = this;
 			
-			memcached.connections[ server ] = new Manager( server, memcached.pool_size, function( callback ){
-				var S = new Stream,
-					Manager = this;
-				
-				// config the Stream
-				S.setTimeout(50);
-				S.setNoDelay(true);
-				S.metaData = [];
-				S.server = server;
-				S.tokens = server_tokens;
-				
-				Utils.fuse( S, {
-					connect	: function(){ callback( false, this ) },
-					close	: function(){ Manager.remove( this ) },
-					error	: function( err ){ memcached.connectionIssue( err, S, callback ) },
-					data	: Utils.curry( memcached, memcached.rawDataReceived, S ),
-					end		: S.end
-				});
-				
-				// connect the net.Stream [ port, hostname ]
-				S.connect.apply( S, server_tokens );
-				return S;
+			// config the Stream
+			S.setTimeout(50);
+			S.setNoDelay(true);
+			S.metaData = [];
+			S.server = server;
+			S.tokens = server_tokens;
+			
+			Utils.fuse( S, {
+				connect	: function(){ callback( false, this ) },
+				close	: function(){ Manager.remove( this ) },
+				error	: function( err ){ memcached.connectionIssue( err, S, callback ) },
+				data	: Utils.curry( memcached, memcached.rawDataReceived, S ),
+				end		: S.end
 			});
 			
-			memcached.connections[ server ].allocate( callback );
-		});		
+			// connect the net.Stream [ port, hostname ]
+			S.connect.apply( S, server_tokens );
+			return S;
+		});
+		
+		this.connections[ server ].allocate( callback );
 	};
 	
 	memcached.command = function( query ){
@@ -137,7 +130,7 @@ Client.config = {
 			
 			S.metaData.push( query );
 			S.write( query.command + LINEBREAK );
-		})
+		});
 	};
 	
 	memcached.connectionIssue = function( error, S, callback ){
@@ -326,8 +319,6 @@ Client.config = {
 	private.errorResponse = function error( error, callback ){
 		if( typeof callback == "function" )
 			callback( error, false );
-		else
-			throw new Error( error );
 		
 		return false;
 	};
@@ -386,7 +377,7 @@ Client.config = {
 	
 	private.incrdecr = function incrdecr( type, key, value, callback ){
 		this.command({
-			key: key, callback: callback,
+			key: key, callback: callback, value: value,
 			
 			// validate the arguments
 			validate: [[ 'key', String ], [ 'value', Number ], [ 'callback', Function ]],
