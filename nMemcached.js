@@ -114,10 +114,10 @@ Client.config = {
 		this.connections[ server ].allocate( callback );
 	};
 	
-	memcached.command = function( query ){
-		if( !Utils.validate_arg( query, this ))  return;
+	memcached.command = function( query, server ){
+		if( query.validation && !Utils.validate_arg( query, this ))  return;
 				
-		var server = this.HashRing.get_node( query.key );
+		server = server || this.HashRing.get_node( query.key );
 		
 		if( server in this.issues && this.issues[ server ].failed )
 			return callback( false, false );
@@ -346,6 +346,38 @@ Client.config = {
 		});
 	};
 	
+	memcached.get_multi = function( keys, callback ){
+		var map = {},
+			memcached = this,
+			responses = [],
+			errors = [],
+			calls = 0,
+			handle = function( err, results ){
+				if( err ) errors.push( err );
+				if( results ) responses = responses.concat( results );
+				if( !--calls ) callback( errors, responses );
+			};
+		
+		keys.forEach(function( key ){
+			var server = memcached.HashRing.get_node( key );
+			if( map[ server ] )
+				map[ server ].push( key );
+			else
+				map[ server ] = [ key ];
+		});
+				
+		Object.keys( map ).forEach(function( key ){
+			calls++;
+			memcached.command({
+					callback: handle,
+					type: 'get',
+					command: 'get ' + map[ key ].join( ' ' )
+				},
+				key
+			);
+		});
+	};
+	
 	memcached.set = function( key, value, lifetime, callback ){
 		if( Array.isArray( key ) )
 			return this.set_multi.apply( this, arguments );
@@ -359,6 +391,8 @@ Client.config = {
 		} else if( typeof value !== 'string' ){
 			flag = FLAG_JSON;
 			value = JSON.stringify( value );
+		} else {
+			value = value.toString();	
 		}
 		
 		if( value.length > this.compression_threshold ){
@@ -371,10 +405,10 @@ Client.config = {
 		}
 		
 		this.command({
-			key: key, callback: callback, lifetime: lifetime,
+			key: key, callback: callback, lifetime: lifetime, value: value,
 			
 			// validate the arguments
-			validate: [[ 'key', String ], [ 'lifetime', Number ], [ 'callback', Function ]],
+			validate: [[ 'key', String ], [ 'lifetime', Number ], [ 'value', String ][ 'callback', Function ]],
 			
 			type: 'set',
 			command: [ 'set', key, flag, lifetime, value.length ].join( ' ' ) + LINEBREAK + value
