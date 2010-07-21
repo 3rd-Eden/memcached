@@ -92,7 +92,7 @@ Client.config = {
 				Manager = this;
 			
 			// config the Stream
-			S.setTimeout(50);
+			S.setTimeout(0);
 			S.setNoDelay(true);
 			S.metaData = [];
 			S.server = server;
@@ -234,6 +234,7 @@ Client.config = {
 							queue.push( dataSet );
 							return [ BUFFER ] 
 						},
+		INCRDECR:		function( tokens ){ return [ CONTINUE, +tokens[1] ] },
 		STAT: 			function( tokens, dataSet ){ return [ BUFFER, true ] },
 		VERSION:		function( tokens, dataSet ){
 							var version_tokens = /(\d+)(?:\.)(\d+)(?:\.)(\d+)$/.exec( tokens.pop() );
@@ -264,6 +265,11 @@ Client.config = {
 		while( buffer_chunks.length ){
 			token = buffer_chunks.shift();
 			tokenSet = token.split( ' ' );
+			
+			// special case for digit only's these are responses from INCR and DECR
+			if( /\d+/.test( tokenSet[0] ))
+				tokenSet.unshift( 'INCRDECR' );
+			
 			
 			// check for dedicated parser
 			if( private.parsers[ tokenSet[0] ] ){
