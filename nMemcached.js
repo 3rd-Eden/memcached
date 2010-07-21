@@ -1,14 +1,14 @@
 var EventEmitter = require('events').EventEmitter,
 	Stream		 = require('net').Stream,
-	Buffer		 = require('buffer').Buffer,
-	CreateHash	 = require('crypto').createHash;
+	Buffer		 = require('buffer').Buffer;
 
 var HashRing 	 = require('./lib/hashring').HashRing,
 	Connection	 = require('./lib/connection'),
 	Utils		 = require('./lib/utils'),
 	Compression	 = require('./lib/zip'),
 	Manager		 = Connection.Manager,
-	IssueLog	 = Connection.IssueLog;
+	IssueLog	 = Connection.IssueLog,
+	Ping		 = Connection.Ping;
 
 exports.Client = Client;
 
@@ -62,18 +62,18 @@ Client.config = {
 
 // There some functions we don't want users to touch so we scope them
 (function( nMemcached ){
-	const FLUSH					= 1E3,
+	const LINEBREAK				= '\r\n',
+		  FLUSH					= 1E3,
 		  BUFFER				= 1E2,
 		  CONTINUE				= 1E1,
-		  LINEBREAK				= '\r\n',
 		  FLAG_JSON 			= 1<<1,
-		  FLAG_COMPRESSION 		= 2<<1,
-		  FLAG_JCOMPRESSION 	= 3<<1,
-		  FLAG_BINARY 			= 4<<1,
-		  FLAG_BCOMPRESSION		= 5<<1,
-		  FLAG_ESCAPED			= 6<<1;
+		  FLAG_BINARY			= 2<<1,
+		  FLAG_COMPRESSION 		= 3<<1,
+		  FLAG_JCOMPRESSION 	= 4<<1,
+		  FLAG_BCOMPRESSION		= 5<<1;
 
 	var memcached = nMemcached.prototype = new EventEmitter,
+		private = {};
 		undefined;
 
 	memcached.connect = function( server, callback ){
@@ -87,42 +87,50 @@ Client.config = {
 			memcached = this;
 			server_tokens.pop();
 		
-		this.connections[ server ] = new Manager( server, this.pool_size, function( callback ){
-			var S = new Stream,
-				Manager = this;
+		// The node.js socket doesn't give good enough responses to determin if we have a working connection or not
+		// so we ping, before we aquire a new working connection
+		Ping( server_tokens[1], function( err ){
+			if( err )
+				return memcached.connectionIssue( err, { tokens:server_tokens, server:server }, callback );
 			
-			// config the Stream
-			S.setTimeout(0);
-			S.setNoDelay(true);
-			S.metaData = [];
-			S.server = server;
-			S.tokens = server_tokens;
-			
-			Utils.fuse( S, {
-				connect	: function(){ callback( false, this ) },
-				close	: function(){ Manager.remove( this ) },
-				error	: function( err ){ memcached.connectionIssue( error, S, callback ) },
-				data	: Utils.curry( memcached, memcached.rawDataReceived, S ),
-				end		: S.end
+			memcached.connections[ server ] = new Manager( server, memcached.pool_size, function( callback ){
+				var S = new Stream,
+					Manager = this;
+				
+				// config the Stream
+				S.setTimeout(50);
+				S.setNoDelay(true);
+				S.metaData = [];
+				S.server = server;
+				S.tokens = server_tokens;
+				
+				Utils.fuse( S, {
+					connect	: function(){ callback( false, this ) },
+					close	: function(){ Manager.remove( this ) },
+					error	: function( err ){ memcached.connectionIssue( err, S, callback ) },
+					data	: Utils.curry( memcached, memcached.rawDataReceived, S ),
+					end		: S.end
+				});
+				
+				// connect the net.Stream [ port, hostname ]
+				S.connect.apply( S, server_tokens );
+				return S;
 			});
 			
-			// connect the net.Stream [ port, hostname ]
-			S.connect.apply( S, server_tokens );
-			return S;
-		});
-		
-		this.connections[ server ].allocate( callback );
+			memcached.connections[ server ].allocate( callback );
+		});		
 	};
 	
 	memcached.command = function( query ){
-		if( !Utils.validate_arg( query ))  return;
-		
+		if( !Utils.validate_arg( query, this ))  return;
+				
 		var server = this.HashRing.get_node( query.key );
 		
 		if( server in this.issues && this.issues[ server ].failed )
 			return callback( false, false );
 		
 		this.connect( server, function( error, S ){
+			
 			if( !S ) return query.callback( false, false );
 			if( error ) return query.callback( error );
 			if( S.readyState !== 'open' ) return query.callback( 'Connection readyState is set to ' + S.readySate );
@@ -134,7 +142,11 @@ Client.config = {
 	
 	memcached.connectionIssue = function( error, S, callback ){
 		// end connection and mark callback as cache miss
-		S.end(); callback( false, false );
+		if( S && S.end )
+			S.end();
+				
+		if( callback )
+			callback( false, false );
 		
 		var issues,
 			server = S.server,
@@ -183,13 +195,13 @@ Client.config = {
 	
 	// these do not need to be publicly available as it's one of the most important
 	// parts of the whole client.
-	var parsers = {
+	private.parsers = {
 		// handle error respones
 		NOT_FOUND: 		function( tokens, dataSet, err ){ return [ CONTINUE, false ] },
 		NOT_STORED: 	function( tokens, dataSet, err ){ return [ CONTINUE, false ] },
-		ERROR: 			function( tokens, dataSet, err ){ return [ CONTINUE, false ] },
-		CLIENT_ERROR: 	function( tokens, dataSet, err ){ return [ CONTINUE, false ] },
-		SERVER_ERROR: 	function( tokens, dataSet, err ){ return [ CONTINUE, false ] },
+		ERROR: 			function( tokens, dataSet, err ){ err = 'Recieved a nonexistent command name'; return [ CONTINUE, false ] },
+		CLIENT_ERROR: 	function( tokens, dataSet, err ){ err = tokens.splice(1).join(' ');	return [ CONTINUE, false ] },
+		SERVER_ERROR: 	function( tokens, dataSet, err, queue, S, memcached ){ memcached.connectionIssue( tokens.splice(1).join(' '), S ); return [ CONTINUE, false ] },
 		
 		// keyword based responses
 		STORED: 		function( tokens, dataSet ){ return [ CONTINUE, true ] },
@@ -200,20 +212,22 @@ Client.config = {
 		
 		// value parsing:
 		VALUE: 			function( tokens, dataSet, err, queue ){
-							var key = tokens[1], flag = tokens[2], expire = tokens[3],
+							var key = tokens[1], flag = +tokens[2], expire = tokens[3],
 								tmp;
+							
+							// check for compression
+							if( flag >= FLAG_COMPRESSION ){
+								switch( flag ){
+									case FLAG_BCOMPRESSION: flag = FLAG_JSON; break;
+									case FLAG_JCOMPRESSION:	flag = FLAG_BINARY; break;
+								}
+								
+								dataSet = Compression.Inflate( dataSet );
+							}
 							
 							switch( +flag ){
 								case FLAG_JSON:
 									dataSet = JSON.parse( dataSet );
-									break;
-								
-								case FLAG_COMPRESSION:
-									dataSet = Compression.Inflate( dataSet );
-									break;
-								
-								case FLAG_JCOMPRESSION:
-									dataSet = JSON.parse( Compression.Inflate( dataSet ) );
 									break;
 								
 								case FLAG_BINARY:
@@ -221,7 +235,6 @@ Client.config = {
 									tmp.write( dataSet, 0, 'ASCII' );
 									dataSet = tmp;
 									break;
-									
 							}
 							
 							// Add to queue as multiple get key key key key key returns multiple values
@@ -239,13 +252,15 @@ Client.config = {
 										bugfix: version_tokens[3] || 0
 									}];
 						}
-	},
+	};
+	
 	// parses down result sets
-	resultParsers = {
+	private.resultParsers = {
 		// result set parsing
 		stats: function( resultSet ){ return resultSet }
-	},
-	commandReceived = new RegExp( '^(?:' + Object.keys( parsers ).join( '|' ) + ')' );
+	};
+	
+	private.commandReceived = new RegExp( '^(?:' + Object.keys( private.parsers ).join( '|' ) + ')' );
 		
 	memcached.rawDataReceived = function( S, BufferStream ){
 		var queue = [], buffer_chunks = BufferStream.toString().split( LINEBREAK ),
@@ -258,17 +273,17 @@ Client.config = {
 			tokenSet = token.split( ' ' );
 			
 			// check for dedicated parser
-			if( parsers[ tokenSet[0] ] ){
+			if( private.parsers[ tokenSet[0] ] ){
 				
 				// fetch the response content
 				while( buffer_chunks.length ){
-					if( commandReceived.test( buffer_chunks[0] ) )
+					if( private.commandReceived.test( buffer_chunks[0] ) )
 						break;
 					
 					dataSet += ( dataSet.length > 0 ? LINEBREAK : '' ) + buffer_chunks.shift();
 				};
 								
-				resultSet = parsers[ tokenSet[0] ]( tokenSet, dataSet || token, err, queue );
+				resultSet = private.parsers[ tokenSet[0] ]( tokenSet, dataSet || token, err, queue, S, this );
 				
 				switch( resultSet.shift() ){
 					case BUFFER:
@@ -279,8 +294,8 @@ Client.config = {
 						resultSet = queue;
 						
 						// see if optional parsing needs to be applied to make the result set more readable
-						if( resultParsers[ metaData.type ] )
-							resultSet = resultParsers[ metaData.type ]( resultSet, err );
+						if( private.resultParsers[ metaData.type ] )
+							resultSet = private.resultParsers[ metaData.type ]( resultSet, err, S );
 							
 						metaData.callback.call( metaData, err, queue );
 						queue.length = 0;
@@ -306,6 +321,15 @@ Client.config = {
 			metaData = undefined;
 			command = undefined;
 		};
+	};
+	
+	private.errorResponse = function error( error, callback ){
+		if( typeof callback == "function" )
+			callback( error, false );
+		else
+			throw new Error( error );
+		
+		return false;
 	};
 	
 	// get, gets all the same
@@ -343,6 +367,10 @@ Client.config = {
 		if( value.length > this.compression_threshold ){
 			flag = flag == FLAG_JSON ? FLAG_JCOMPRESSION : flag == FLAG_BINARY ? FLAG_BCOMPRESSION : FLAG_COMPRESSION;
 			value = Compression.Deflate( value );
+			
+			if( value.length > this.compression_threshold )
+				return private.errorResponse( 'The length of the value is greater-than ' + this.compression_threshold, callback );
+			
 		}
 		
 		this.command({
@@ -355,6 +383,22 @@ Client.config = {
 			command: [ 'set', key, flag, lifetime, value.length ].join( ' ' ) + LINEBREAK + value
 		})
 	};
+	
+	private.incrdecr = function incrdecr( type, key, value, callback ){
+		this.command({
+			key: key, callback: callback,
+			
+			// validate the arguments
+			validate: [[ 'key', String ], [ 'value', Number ], [ 'callback', Function ]],
+			
+			// used for the query
+			type: type,
+			command: [ type, key, value ].join( ' ' )
+		});
+	};
+	
+	memcached.increment = Utils.curry( false, private.incrdecr, "incr" );
+	memcached.decrement = Utils.curry( false, private.incrdecr, "decr" );
 	
 	memcached.version = function( callback ){
 		this.command({
