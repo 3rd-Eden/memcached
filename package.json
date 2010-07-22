@@ -10,7 +10,7 @@
 		"hashing",
 		"failover",
 		"cluster",
-		"nMemcached"s
+		"nMemcached"
 	],
 	"directories": {
 		"lib": "./lib"
