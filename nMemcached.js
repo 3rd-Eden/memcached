@@ -30,6 +30,9 @@ function Client( args, options ){
 			servers = args;
 			break;
 	}
+	
+	if( !servers.length )
+		throw new Error( "No servers where supplied in the arguments" );
 
 	// merge with global and user config
 	Utils.merge( this, Client.config );
