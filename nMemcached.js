@@ -205,7 +205,7 @@ Client.config = {
 		DELETED: 		function( tokens, dataSet ){ return [ CONTINUE, true ] },
 		OK: 			function( tokens, dataSet ){ return [ CONTINUE, true ] },
 		EXISTS: 		function( tokens, dataSet ){ return [ CONTINUE, true ] },
-		END: 			function( tokens, dataSet ){ return [ FLUSH, true ] },
+		END: 			function( tokens, dataSet, err, queue ){ if( !queue.length) queue.push( false ); return [ FLUSH, true ] },
 		
 		// value parsing:
 		VALUE: 			function( tokens, dataSet, err, queue ){
@@ -262,8 +262,6 @@ Client.config = {
 	
 	private.buffer = function( S, BufferStream ){
 		var chunks = BufferStream.toString().split( LINEBREAK );
-			chunks.pop();
-			
 		this.rawDataReceived( S, response_buffer = response_buffer.concat( chunks ) );
 	};
 	
@@ -310,7 +308,7 @@ Client.config = {
 							resultSet = private.resultParsers[ metaData.type ]( resultSet, err, S );
 							
 						if( metaData.callback )	
-							metaData.callback.call( metaData, err.length ? err : err[0], queue.length ? queue : queue[0] );
+							metaData.callback.call( metaData, err.length ? err : err[0], queue.length > 1 ? queue : queue[0] );
 							
 						queue.length = 0;
 						err = [];
@@ -337,9 +335,12 @@ Client.config = {
 			tokenSet = undefined;
 			metaData = undefined;
 			command = undefined;
+			
+			// check if we need to remove an empty item from the array, as splitting on /r/n might cause an empty
+			// item at the end.. 
+			if( response_buffer[0] == "" )
+				response_buffer.shift();
 		};
-		
-		console.dir(response_buffer)
 	};
 	
 	private.errorResponse = function error( error, callback ){
@@ -448,6 +449,19 @@ Client.config = {
 	
 	memcached.increment = Utils.curry( false, private.incrdecr, "incr" );
 	memcached.decrement = Utils.curry( false, private.incrdecr, "decr" );
+	
+	memcached.del = function( key, callback ){
+		this.command({
+			key: key, callback: callback,
+			
+			// validate the arguments
+			validate: [[ 'key', String ], [ 'callback', Function ]],
+			
+			// used for the query
+			type: 'delete',
+			command: 'delete ' + key
+		});
+	};
 	
 	memcached.version = function( callback ){
 		this.command({
