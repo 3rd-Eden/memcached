@@ -192,8 +192,8 @@ Client.config = {
 		// handle error respones
 		NOT_FOUND: 		function( tokens, dataSet, err ){ return [ CONTINUE, false ] },
 		NOT_STORED: 	function( tokens, dataSet, err ){ return [ CONTINUE, false ] },
-		ERROR: 			function( tokens, dataSet, err ){ err = 'Recieved a nonexistent command name'; return [ CONTINUE, false ] },
-		CLIENT_ERROR: 	function( tokens, dataSet, err ){ err = tokens.splice(1).join(' ');	return [ CONTINUE, false ] },
+		ERROR: 			function( tokens, dataSet, err ){ err.push( 'Received an ERROR response.'); return [ FLUSH, false ] },
+		CLIENT_ERROR: 	function( tokens, dataSet, err ){ err.push( tokens.splice(1).join(' ') ); return [ BUFFER, false ] },
 		SERVER_ERROR: 	function( tokens, dataSet, err, queue, S, memcached ){ memcached.connectionIssue( tokens.splice(1).join(' '), S ); return [ CONTINUE, false ] },
 		
 		// keyword based responses
@@ -211,21 +211,21 @@ Client.config = {
 							// check for compression
 							if( flag >= FLAG_COMPRESSION ){
 								switch( flag ){
-									case FLAG_BCOMPRESSION: flag = FLAG_JSON; break;
-									case FLAG_JCOMPRESSION:	flag = FLAG_BINARY; break;
+									case FLAG_BCOMPRESSION: flag = FLAG_BINARY; break;
+									case FLAG_JCOMPRESSION:	flag = FLAG_JSON; break;
 								}
 								
 								dataSet = Compression.Inflate( dataSet );
 							}
 							
-							switch( +flag ){
+							switch( flag ){
 								case FLAG_JSON:
 									dataSet = JSON.parse( dataSet );
 									break;
 								
 								case FLAG_BINARY:
 									tmp = new Buffer( dataSet.length );
-									tmp.write( dataSet, 0, 'ASCII' );
+									tmp.write( dataSet, 0, 'ascii' );
 									dataSet = tmp;
 									break;
 							}
@@ -258,10 +258,10 @@ Client.config = {
 		
 	memcached.rawDataReceived = function( S, BufferStream ){
 		var queue = [], buffer_chunks = BufferStream.toString().split( LINEBREAK ),
-			token, tokenSet, command, dataSet = '', resultSet, metaData, err;
+			token, tokenSet, command, dataSet = '', resultSet, metaData, err = [];
 					
 		buffer_chunks.pop();
-				
+						
 		while( buffer_chunks.length ){
 			token = buffer_chunks.shift();
 			tokenSet = token.split( ' ' );
@@ -278,10 +278,9 @@ Client.config = {
 				while( buffer_chunks.length ){
 					if( private.commandReceived.test( buffer_chunks[0] ) )
 						break;
-					
 					dataSet += ( dataSet.length > 0 ? LINEBREAK : '' ) + buffer_chunks.shift();
 				};
-								
+				
 				resultSet = private.parsers[ tokenSet[0] ]( tokenSet, dataSet || token, err, queue, S, this );
 				
 				switch( resultSet.shift() ){
@@ -296,16 +295,16 @@ Client.config = {
 						if( private.resultParsers[ metaData.type ] )
 							resultSet = private.resultParsers[ metaData.type ]( resultSet, err, S );
 							
-						metaData.callback.call( metaData, err, queue );
+						metaData.callback.call( metaData, err.length > 1 ? err : err[0], queue );
 						queue.length = 0;
-						err = false;
+						err = [];
 						break;
 						
 					case CONTINUE:	
 					default:
 						metaData = S.metaData.shift();
-						metaData.callback.call( metaData, err, resultSet[0] );
-						err = false;
+						metaData.callback.call( metaData, err.length > 1 ? err : err[0], resultSet[0] );
+						err = [];
 						break;
 				}
 			} else {
@@ -386,8 +385,7 @@ Client.config = {
 		
 		if( Buffer.isBuffer( value ) ){
 			flag = FLAG_BINARY;
-			value = value.toString( 'ASCII' );
-		
+			value = value.toString( 'ascii' );
 		} else if( typeof value !== 'string' ){
 			flag = FLAG_JSON;
 			value = JSON.stringify( value );
@@ -398,11 +396,10 @@ Client.config = {
 		if( value.length > this.compression_threshold ){
 			flag = flag == FLAG_JSON ? FLAG_JCOMPRESSION : flag == FLAG_BINARY ? FLAG_BCOMPRESSION : FLAG_COMPRESSION;
 			value = Compression.Deflate( value );
-			
-			if( value.length > this.compression_threshold )
-				return private.errorResponse( 'The length of the value is greater-than ' + this.compression_threshold, callback );
-			
 		}
+		
+		if( value.length > this.max_value )
+			return private.errorResponse( 'The length of the value is greater-than ' + this.compression_threshold, callback );
 		
 		this.command({
 			key: key, callback: callback, lifetime: lifetime, value: value,
@@ -411,7 +408,7 @@ Client.config = {
 			validate: [[ 'key', String ], [ 'lifetime', Number ], [ 'value', String ][ 'callback', Function ]],
 			
 			type: 'set',
-			command: [ 'set', key, flag, lifetime, value.length ].join( ' ' ) + LINEBREAK + value
+			command: [ 'set', key, flag, lifetime, Buffer.byteLength( value ) ].join( ' ' ) + LINEBREAK + value
 		})
 	};
 	

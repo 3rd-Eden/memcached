@@ -9,7 +9,11 @@
 		{
 			"modules": [ "./lib/utils" ],
 			"description:": "Add replaceServer and removeServer functionality to our HashRing, so we remove dead servers and still have good working key chain"
-		}
+		},
+        {
+        	"modules": [ "nMemcached" ],
+			"description": "When receiving large contents from the memcached, it's possible that buffer received get's called multiple times. So we need to create a buffer to buffer the buffer."
+        }
 	],
 	
 	"features": [
@@ -21,18 +25,13 @@
 	],
 	
 	"commands": [
-		"get",
-		"gets",
 		"multiget",
-		"set",
 		"multiset",
 		"add",
 		"replace",
 		"append",
 		"prepent",
 		"cas",
-		"incr",
-		"decr",
 		"delete",
 		"flush",
 		"version",
