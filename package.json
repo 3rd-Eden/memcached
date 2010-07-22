@@ -4,6 +4,14 @@
 	"author": "Arnout Kazemier",
 	"description": "A fully featured Memcached client, supporting both single and clustered Memcached server through consistent hashing and failover/ failure",
 	"main": "./nMemcached",
+	"keywords":[
+		"memcached",
+		"client",
+		"hashing",
+		"failover",
+		"cluster",
+		"nMemcached"s
+	],
 	"directories": {
 		"lib": "./lib"
 	},
