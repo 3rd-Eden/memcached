@@ -259,6 +259,11 @@ Client.config = {
 		// combines the stats array, in to an object
 		stats: function( resultSet, err, S ){
 			var response = {};
+			
+			// add references to the retrieved server
+			response.server = S.server;
+			
+			// Fill the object 
 			resultSet.forEach(function( statSet ){
 				response[ statSet[0] ] =  statSet[1];
 			});
