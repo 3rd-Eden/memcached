@@ -239,7 +239,9 @@ Client.config = {
 							return [ BUFFER ] 
 						},
 		INCRDECR:		function( tokens ){ return [ CONTINUE, +tokens[1] ] },
-		STAT: 			function( tokens, dataSet ){ return [ BUFFER, true ] },
+		STAT: 			function( tokens, dataSet, err, queue ){
+							queue.push([tokens[1], /^\d+$/.test( tokens[2] ) ? +tokens[2] : tokens[2] ]); return [ BUFFER, true ] 
+						},
 		VERSION:		function( tokens, dataSet ){
 							var version_tokens = /(\d+)(?:\.)(\d+)(?:\.)(\d+)$/.exec( tokens.pop() );
 							return [ CONTINUE, 
@@ -248,14 +250,20 @@ Client.config = {
 										major: 	version_tokens[1] || 0,
 										minor: 	version_tokens[2] || 0,
 										bugfix: version_tokens[3] || 0
-									}];
+									}]
 						}
 	};
 	
 	// parses down result sets
 	private.resultParsers = {
-		// result set parsing
-		stats: function( resultSet ){ return resultSet }
+		// combines the stats array, in to an object
+		stats: function( resultSet, err, S ){
+			var response = {};
+			resultSet.forEach(function( statSet ){
+				response[ statSet[0] ] =  statSet[1];
+			});
+			return response;
+		}
 	};
 	
 	private.commandReceived = new RegExp( '^(?:' + Object.keys( private.parsers ).join( '|' ) + ')' );
@@ -472,6 +480,18 @@ Client.config = {
 			
 			type: 'version',
 			command: 'version'
+		})
+	};
+	
+	memcached.stats = function( callback ){
+		this.command({
+			key: 'hello', callback: callback,
+			
+			// validate the arguments
+			validate: [[ 'callback', Function ]],
+			
+			type: 'stats',
+			command: 'stats'
 		})
 	};
 })( Client )
