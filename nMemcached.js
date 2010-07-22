@@ -73,7 +73,8 @@ Client.config = {
 		  FLAG_BCOMPRESSION		= 5<<1;
 
 	var memcached = nMemcached.prototype = new EventEmitter,
-		private = {};
+		response_buffer = [],
+		private = {},
 		undefined;
 
 	memcached.connect = function( server, callback ){
@@ -102,7 +103,7 @@ Client.config = {
 				connect	: function(){ callback( false, this ) },
 				close	: function(){ Manager.remove( this ) },
 				error	: function( err ){ memcached.connectionIssue( err, S, callback ) },
-				data	: Utils.curry( memcached, memcached.rawDataReceived, S ),
+				data	: Utils.curry( memcached, private.buffer, S ),
 				end		: S.end
 			});
 			
@@ -255,14 +256,18 @@ Client.config = {
 	};
 	
 	private.commandReceived = new RegExp( '^(?:' + Object.keys( private.parsers ).join( '|' ) + ')' );
-		
-	memcached.rawDataReceived = function( S, BufferStream ){
-		var queue = [], buffer_chunks = BufferStream.toString().split( LINEBREAK ),
-			token, tokenSet, command, dataSet = '', resultSet, metaData, err = [];
-					
-		buffer_chunks.pop();
-						
-		while( buffer_chunks.length ){
+	
+	private.buffer = function( S, BufferStream ){
+		var chunks = BufferStream.toString().split( LINEBREAK );
+			chunks.pop();
+			
+		this.rawDataReceived( S, response_buffer = response_buffer.concat( chunks ) );
+	};
+	
+	memcached.rawDataReceived = function( S, buffer_chunks ){
+		var queue = [],	token, tokenSet, command, dataSet = '', resultSet, metaData, err = [];
+											
+		while( buffer_chunks.length && private.commandReceived.test( buffer_chunks[0] ) ){
 			token = buffer_chunks.shift();
 			tokenSet = token.split( ' ' );
 			
@@ -270,6 +275,11 @@ Client.config = {
 			if( /\d+/.test( tokenSet[0] ))
 				tokenSet.unshift( 'INCRDECR' );
 			
+			// special case for value, it's required that it has a second response!
+			// add the token back, and wait for the next response, we might be handling a big 
+			// ass response here. 
+			if( tokenSet[0] == 'VALUE' && buffer_chunks.indexOf( 'END') == -1 )
+				return buffer_chunks.unshift( token );
 			
 			// check for dedicated parser
 			if( private.parsers[ tokenSet[0] ] ){
@@ -278,6 +288,7 @@ Client.config = {
 				while( buffer_chunks.length ){
 					if( private.commandReceived.test( buffer_chunks[0] ) )
 						break;
+						
 					dataSet += ( dataSet.length > 0 ? LINEBREAK : '' ) + buffer_chunks.shift();
 				};
 				
@@ -295,7 +306,9 @@ Client.config = {
 						if( private.resultParsers[ metaData.type ] )
 							resultSet = private.resultParsers[ metaData.type ]( resultSet, err, S );
 							
-						metaData.callback.call( metaData, err.length > 1 ? err : err[0], queue );
+						if( metaData.callback )	
+							metaData.callback.call( metaData, err.length ? err : err[0], queue.length ? queue : queue[0] );
+							
 						queue.length = 0;
 						err = [];
 						break;
@@ -303,7 +316,10 @@ Client.config = {
 					case CONTINUE:	
 					default:
 						metaData = S.metaData.shift();
-						metaData.callback.call( metaData, err.length > 1 ? err : err[0], resultSet[0] );
+						
+						if( metaData.callback )
+							metaData.callback.call( metaData, err.length > 1 ? err : err[0], resultSet[0] );
+							
 						err = [];
 						break;
 				}
@@ -319,6 +335,8 @@ Client.config = {
 			metaData = undefined;
 			command = undefined;
 		};
+		
+		console.dir(response_buffer)
 	};
 	
 	private.errorResponse = function error( error, callback ){
