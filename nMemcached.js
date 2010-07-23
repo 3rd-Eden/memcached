@@ -429,10 +429,7 @@ Client.config = {
 		});
 	};
 	
-	memcached.set = function( key, value, lifetime, callback ){
-		if( Array.isArray( key ) )
-			return this.set_multi.apply( this, arguments );
-		
+	private.setters = function( type, validate, key, value, lifetime, callback, cas ){
 		var flag = 0;
 		
 		if( Buffer.isBuffer( value ) ){
@@ -452,16 +449,36 @@ Client.config = {
 		
 		if( value.length > this.max_value )
 			return private.errorResponse( 'The length of the value is greater-than ' + this.compression_threshold, callback );
-		
+				
 		this.command({
-			key: key, callback: callback, lifetime: lifetime, value: value,
+			key: key, callback: callback, lifetime: lifetime, value: value, cas: cas,
 			
 			// validate the arguments
-			validate: [[ 'key', String ], [ 'lifetime', Number ], [ 'value', String ][ 'callback', Function ]],
+			validate: validate,
 			
-			type: 'set',
-			command: [ 'set', key, flag, lifetime, Buffer.byteLength( value ) ].join( ' ' ) + LINEBREAK + value
+			type: type,
+			command: [ type, key, flag, lifetime, Buffer.byteLength( value ) ].join( ' ' ) + ( cas ? cas : '' ) + LINEBREAK + value
 		})
+	
+	};
+	
+	memcached.set = Utils.curry( false, private.setters, 'set', [[ 'key', String ], [ 'lifetime', Number ], [ 'value', String ], [ 'callback', Function ]] );
+	memcached.replace = Utils.curry( false, private.setters, 'replace', [[ 'key', String ], [ 'lifetime', Number ], [ 'value', String ], [ 'callback', Function ]] );
+	
+	memcached.add = function( key, value, callback ){
+		private.setters.call( this, 'add', [[ 'key', String ], [ 'value', String ], [ 'callback', Function ]], key, value, 0, callback );
+	};
+	
+	memcached.cas = function( key, value, cas, lifetime, callback ){
+		private.setters.call( this, 'add', [[ 'key', String ], [ 'lifetime', Number ], [ 'value', String ], [ 'callback', Function ]], key, value, lifetime, callback, cas );
+	};
+	
+	memcached.append = function( key, value, callback ){
+		private.setters.call( this, 'append', [[ 'key', String ], [ 'lifetime', Number ], [ 'value', String ], [ 'callback', Function ]], key, value, 0, callback );
+	};
+	
+	memcached.prepend = function( key, value, callback ){
+		private.setters.call( this, 'prepend', [[ 'key', String ], [ 'lifetime', Number ], [ 'value', String ], [ 'callback', Function ]], key, value, 0, callback );
 	};
 	
 	private.incrdecr = function incrdecr( type, key, value, callback ){
