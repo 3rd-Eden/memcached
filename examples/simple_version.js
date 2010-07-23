@@ -4,7 +4,7 @@ var	nMemcached = require( '../nMemcached' ).Client,
 // connect to our memcached server on host 10.211.55.5, port 11211
 memcached = new nMemcached( "10.211.55.5:11211" );
 
-memcached.stats( function( err, result ){
+memcached.version( function( err, result ){
 	if( err ) console.error( err );
 	
 	console.log( JSON.stringify ( result ));

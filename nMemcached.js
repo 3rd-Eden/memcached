@@ -32,7 +32,7 @@ function Client( args, options ){
 	}
 	
 	if( !servers.length )
-		throw new Error( "No servers where supplied in the arguments" );
+		throw new Error( 'No servers where supplied in the arguments' );
 
 	// merge with global and user config
 	Utils.merge( this, Client.config );
@@ -122,9 +122,10 @@ Client.config = {
 	
 	// creates a multi stream
 	memcached.multi = function( keys, callback ){
-		var map = Array.isArray( keys ) ? {} : this.connections,
-			memcached = this, servers, i;
+		var map = {}, memcached = this, servers, i;
 		
+		// gets all servers based on the supplied keys,
+		// or just gives all servers if we don't have keys
 		if( keys ){
 			keys.forEach(function( key ){
 				var server = memcached.HashRing.get_node( key );
@@ -133,11 +134,12 @@ Client.config = {
 				else
 					map[ server ] = [ key ];
 			});
+			servers = Object.keys( map );
+		} else {
+			servers = this.servers;
 		}
 		
-		servers = Object.keys( map );
 		i = servers.length;
-		
 		while( i-- )
 			callback.call( this, servers[i], map[ servers[i] ], i, servers.length );
 	};
@@ -269,7 +271,8 @@ Client.config = {
 		VERSION:		function( tokens, dataSet ){
 							var version_tokens = /(\d+)(?:\.)(\d+)(?:\.)(\d+)$/.exec( tokens.pop() );
 							return [ CONTINUE, 
-									{ 
+									{
+										server: this.server, 
 										version:version_tokens[0],
 										major: 	version_tokens[1] || 0,
 										minor: 	version_tokens[2] || 0,
@@ -281,16 +284,17 @@ Client.config = {
 	// parses down result sets
 	private.resultParsers = {
 		// combines the stats array, in to an object
-		stats: function( resultSet, err, S ){
+		stats: function( resultSet ){
 			var response = {};
 			
 			// add references to the retrieved server
-			response.server = S.server;
+			response.server = this.server;
 			
 			// Fill the object 
 			resultSet.forEach(function( statSet ){
 				response[ statSet[0] ] =  statSet[1];
 			});
+			
 			return response;
 		}
 	};
@@ -330,7 +334,7 @@ Client.config = {
 					dataSet += ( dataSet.length > 0 ? LINEBREAK : '' ) + buffer_chunks.shift();
 				};
 				
-				resultSet = private.parsers[ tokenSet[0] ]( tokenSet, dataSet || token, err, queue, S, this );
+				resultSet = private.parsers[ tokenSet[0] ].call( S, tokenSet, dataSet || token, err, queue, this );
 				
 				switch( resultSet.shift() ){
 					case BUFFER:
@@ -342,10 +346,10 @@ Client.config = {
 						
 						// see if optional parsing needs to be applied to make the result set more readable
 						if( private.resultParsers[ metaData.type ] )
-							resultSet = private.resultParsers[ metaData.type ]( resultSet, err, S );
+							queue = private.resultParsers[ metaData.type ].call( S, resultSet, err );
 							
 						if( metaData.callback )	
-							metaData.callback.call( metaData, err.length ? err : err[0], queue.length > 1 ? queue : queue[0] );
+							metaData.callback.call( metaData, err.length ? err : err[0], !Array.isArray( queue ) || queue.length > 1 ? queue : queue[0] );
 							
 						queue.length = 0;
 						err = [];
@@ -375,13 +379,13 @@ Client.config = {
 			
 			// check if we need to remove an empty item from the array, as splitting on /r/n might cause an empty
 			// item at the end.. 
-			if( response_buffer[0] == "" )
+			if( response_buffer[0] == '' )
 				response_buffer.shift();
 		};
 	};
 	
 	private.errorResponse = function error( error, callback ){
-		if( typeof callback == "function" )
+		if( typeof callback == 'function' )
 			callback( error, false );
 		
 		return false;
@@ -405,11 +409,7 @@ Client.config = {
 	};
 	
 	memcached.get_multi = function( keys, callback ){
-		var map = {},
-			memcached = this,
-			responses = [],
-			errors = [],
-			calls,
+		var memcached = this, responses = [], errors = [], calls,
 			handle = function( err, results ){
 				if( err ) errors.push( err );
 				if( results ) responses = responses.concat( results );
@@ -477,8 +477,8 @@ Client.config = {
 		});
 	};
 	
-	memcached.increment = Utils.curry( false, private.incrdecr, "incr" );
-	memcached.decrement = Utils.curry( false, private.incrdecr, "decr" );
+	memcached.increment = Utils.curry( false, private.incrdecr, 'incr' );
+	memcached.decrement = Utils.curry( false, private.incrdecr, 'decr' );
 	
 	memcached.del = function( key, callback ){
 		this.command({
@@ -493,27 +493,29 @@ Client.config = {
 		});
 	};
 	
-	memcached.version = function( callback ){
-		this.command({
-			key: 'hello', callback: callback,
+	private.singles = function( type, callback ){
+		var memcached = this, responses = [], errors = [], calls,
+			handle = function( err, results ){
+				if( err ) errors.push( err );
+				if( results ) responses = responses.concat( results );
+				if( !--calls ) callback( errors, responses );
+			};
+		
+		this.multi( false, function( server, keys, index, totals ){
+			if( !calls ) calls = totals;
 			
-			// validate the arguments
-			validate: [[ 'callback', Function ]],
-			
-			type: 'version',
-			command: 'version'
-		})
+			memcached.command({
+					callback: handle,
+					type: type,
+					command: type
+				},
+				server
+			);
+		});
 	};
 	
-	memcached.stats = function( callback ){
-		this.command({
-			key: 'hello', callback: callback,
-			
-			// validate the arguments
-			validate: [[ 'callback', Function ]],
-			
-			type: 'stats',
-			command: 'stats'
-		})
-	};
+	memcached.version = Utils.curry( false, private.singles, 'version' );
+	memcached.flush = Utils.curry( false, private.singles, 'flush_all' );
+	memcached.stats = Utils.curry( false, private.singles, 'stats' );
+	
 })( Client )
