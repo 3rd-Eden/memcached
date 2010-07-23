@@ -79,7 +79,9 @@ Client.config = {
 		response_buffer = [],
 		private = {},
 		undefined;
-
+	
+	// creates or generates a new connection for the give server, the callback will recieve the connection
+	// if the operation was sucessfull
 	memcached.connect = function( server, callback ){
 		if( server in this.issues && this.issues[ server ].failed )
 			return callback( false, false );
@@ -116,6 +118,28 @@ Client.config = {
 		});
 		
 		this.connections[ server ].allocate( callback );
+	};
+	
+	// creates a multi stream
+	memcached.multi = function( keys, callback ){
+		var map = Array.isArray( keys ) ? {} : this.connections,
+			memcached = this, servers, i;
+		
+		if( keys ){
+			keys.forEach(function( key ){
+				var server = memcached.HashRing.get_node( key );
+				if( map[ server ] )
+					map[ server ].push( key );
+				else
+					map[ server ] = [ key ];
+			});
+		}
+		
+		servers = Object.keys( map );
+		i = servers.length;
+		
+		while( i-- )
+			callback.call( this, servers[i], map[ servers[i] ], i, servers.length );
 	};
 	
 	memcached.command = function( query, server ){
@@ -196,7 +220,7 @@ Client.config = {
 		// handle error respones
 		NOT_FOUND: 		function( tokens, dataSet, err ){ return [ CONTINUE, false ] },
 		NOT_STORED: 	function( tokens, dataSet, err ){ return [ CONTINUE, false ] },
-		ERROR: 			function( tokens, dataSet, err ){ err.push( 'Received an ERROR response.'); return [ FLUSH, false ] },
+		ERROR: 			function( tokens, dataSet, err ){ err.push( 'Received an ERROR response'); return [ FLUSH, false ] },
 		CLIENT_ERROR: 	function( tokens, dataSet, err ){ err.push( tokens.splice(1).join(' ') ); return [ BUFFER, false ] },
 		SERVER_ERROR: 	function( tokens, dataSet, err, queue, S, memcached ){ memcached.connectionIssue( tokens.splice(1).join(' '), S ); return [ CONTINUE, false ] },
 		
@@ -380,29 +404,22 @@ Client.config = {
 			memcached = this,
 			responses = [],
 			errors = [],
-			calls = 0,
+			calls,
 			handle = function( err, results ){
 				if( err ) errors.push( err );
 				if( results ) responses = responses.concat( results );
 				if( !--calls ) callback( errors, responses );
 			};
 		
-		keys.forEach(function( key ){
-			var server = memcached.HashRing.get_node( key );
-			if( map[ server ] )
-				map[ server ].push( key );
-			else
-				map[ server ] = [ key ];
-		});
-				
-		Object.keys( map ).forEach(function( key ){
-			calls++;
+		this.multi( keys, function( server, keys, index, totals ){
+			if( !calls ) calls = totals;
+			
 			memcached.command({
 					callback: handle,
 					type: 'get',
-					command: 'get ' + map[ key ].join( ' ' )
+					command: 'get ' + keys.join( ' ' )
 				},
-				key
+				server
 			);
 		});
 	};
