@@ -55,6 +55,7 @@ Client.config = {
 
 	pool_size: 10,				 // maximal parallel connections
 	reconnect: 18000000,		 // if dead, attempt reconnect each xx ms
+	timeout: 5000,				 // after x ms the server should send a timeout if we can't connect
 	retries: 5,					 // amount of retries before server is dead
 	retry: 30000,				 // timeout between retries, all call will be marked as cache miss
 	remove: false,				 // remove server if dead if false, we will attempt to reconnect
@@ -98,7 +99,7 @@ Client.config = {
 				Manager = this;
 			
 			// config the Stream
-			S.setTimeout(0);
+			S.setTimeout( memcached.timeout );
 			S.setNoDelay(true);
 			S.metaData = [];
 			S.server = server;
@@ -109,6 +110,7 @@ Client.config = {
 				close	: function(){ Manager.remove( this ) },
 				error	: function( err ){ memcached.connectionIssue( err, S, callback ) },
 				data	: Utils.curry( memcached, private.buffer, S ),
+				timeout : function(){ Manager.remove( this ) },
 				end		: S.end
 			});
 			
@@ -152,7 +154,7 @@ Client.config = {
 		server = server || this.HashRing.get_node( query.key );
 		
 		if( server in this.issues && this.issues[ server ].failed )
-			return callback( false, false );
+			return query.callback( false, false );
 		
 		this.connect( server, function( error, S ){
 			
