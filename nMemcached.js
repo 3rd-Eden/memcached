@@ -302,6 +302,14 @@ Client.config = {
 			});
 			
 			return response;
+		},
+		
+		'stats settings': function(){
+			return private.resultParsers.stats.apply( this, arguments );
+		},
+		
+		'stats slabs': function(){
+		
 		}
 	};
 	
@@ -358,7 +366,7 @@ Client.config = {
 						if( metaData.callback )	
 							metaData.callback.call( metaData, err.length ? err : err[0], !Array.isArray( queue ) || queue.length > 1 ? queue : queue[0] );
 							
-						queue.length = 0;
+						queue = [];
 						err = [];
 						break;
 						
@@ -531,7 +539,7 @@ Client.config = {
 			handle = function( err, results ){
 				if( err ) errors.push( err );
 				if( results ) responses = responses.concat( results );
-				if( !--calls ) callback( errors, responses );
+				if( !--calls ) callback( errors, responses.length > 1 ? responses : responses[0] );
 			};
 		
 		this.multi( false, function( server, keys, index, totals ){
@@ -550,5 +558,7 @@ Client.config = {
 	memcached.version = Utils.curry( false, private.singles, 'version' );
 	memcached.flush = Utils.curry( false, private.singles, 'flush_all' );
 	memcached.stats = Utils.curry( false, private.singles, 'stats' );
+	memcached.settings = Utils.curry( false, private.singles, 'stats settings' );
+	memcached.slabs = Utils.curry( false, private.singles, 'stats slabs' );
 	
 })( Client )
