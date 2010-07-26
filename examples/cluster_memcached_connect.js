@@ -11,8 +11,8 @@ memcached.set( "hello_world", "greetings from planet node", 1000, function( err,
 	assert.equal( success, true, "Successfully stored data" )
 	
 	memcached.get( "hello_world", function( err, success ){
-		assert.equal( success, "greetings from planet node", "Successfully fetched data" )
+		assert.equal( success, "greetings from planet node", "Failed to fetched data" )
 		sys.puts( success );
-		memcached.disconnect()
+		memcached.end()
 	});
 });

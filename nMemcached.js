@@ -47,21 +47,21 @@ function Client( args, options ){
 
 // Allows users to configure the memcached globally or per memcached client
 Client.config = {
-	max_key_size: 251,			 // max keysize allowed by Memcached
-	max_expiration: 2592000,	 // max expiration duration allowed by Memcached
-	max_value: 1048576,			 // max length of value allowed by Memcached
+	maxKeySize: 251,			 // max keysize allowed by Memcached
+	maxExpiration: 2592000,	 // max expiration duration allowed by Memcached
+	maxValue: 1048576,			 // max length of value allowed by Memcached
 	
 	algorithm: 'md5',			 // hashing algorithm that is used for key mapping  
 
-	pool_size: 10,				 // maximal parallel connections
+	poolSize: 10,				 // maximal parallel connections
 	reconnect: 18000000,		 // if dead, attempt reconnect each xx ms
 	timeout: 5000,				 // after x ms the server should send a timeout if we can't connect
 	retries: 5,					 // amount of retries before server is dead
 	retry: 30000,				 // timeout between retries, all call will be marked as cache miss
 	remove: false,				 // remove server if dead if false, we will attempt to reconnect
 
-	compression_threshold: 10240,// only than will compression be usefull
-	key_compression: true		 // compress keys if they are to large (md5)
+	compressionThreshold: 10240,// only than will compression be usefull
+	keyCompression: true		 // compress keys if they are to large (md5)
 };
 
 // There some functions we don't want users to touch so we scope them
@@ -77,7 +77,7 @@ Client.config = {
 		  FLAG_BCOMPRESSION		= 5<<1;
 
 	var memcached = nMemcached.prototype = new EventEmitter,
-		response_buffer = [],
+		responseBuffer = [],
 		private = {},
 		undefined;
 	
@@ -90,11 +90,11 @@ Client.config = {
 		if( server in this.connections )
 			return this.connections[ server ].allocate( callback );
 		
-		var server_tokens = /(.*):(\d+){1,}$/.exec( server ).reverse(),
+		var serverTokens = /(.*):(\d+){1,}$/.exec( server ).reverse(),
 			memcached = this;
-			server_tokens.pop();
+			serverTokens.pop();
 		
-		this.connections[ server ] = new Manager( server, this.pool_size, function( callback ){
+		this.connections[ server ] = new Manager( server, this.poolSize, function( callback ){
 			var S = new Stream,
 				Manager = this;
 			
@@ -103,7 +103,7 @@ Client.config = {
 			S.setNoDelay(true);
 			S.metaData = [];
 			S.server = server;
-			S.tokens = server_tokens;
+			S.tokens = serverTokens;
 			
 			Utils.fuse( S, {
 				connect	: function(){ callback( false, this ) },
@@ -115,7 +115,7 @@ Client.config = {
 			});
 			
 			// connect the net.Stream [ port, hostname ]
-			S.connect.apply( S, server_tokens );
+			S.connect.apply( S, serverTokens );
 			return S;
 		});
 		
@@ -130,7 +130,7 @@ Client.config = {
 		// or just gives all servers if we don't have keys
 		if( keys ){
 			keys.forEach(function( key ){
-				var server = memcached.HashRing.get_node( key );
+				var server = memcached.HashRing.getNode( key );
 				if( map[ server ] )
 					map[ server ].push( key );
 				else
@@ -149,9 +149,9 @@ Client.config = {
 	// executes the command on the net.Stream, if no server is supplied it will use the query.key to get 
 	// the server from the HashRing
 	memcached.command = function( query, server ){
-		if( query.validation && !Utils.validate_arg( query, this ))  return;
+		if( query.validation && !Utils.validateArg( query, this ))  return;
 				
-		server = server || this.HashRing.get_node( query.key );
+		server = server || this.HashRing.getNode( query.key );
 		
 		if( server in this.issues && this.issues[ server ].failed )
 			return query.callback( false, false );
@@ -275,14 +275,14 @@ Client.config = {
 							queue.push([tokens[1], /^\d+$/.test( tokens[2] ) ? +tokens[2] : tokens[2] ]); return [ BUFFER, true ] 
 						},
 		VERSION:		function( tokens, dataSet ){
-							var version_tokens = /(\d+)(?:\.)(\d+)(?:\.)(\d+)$/.exec( tokens.pop() );
+							var versionTokens = /(\d+)(?:\.)(\d+)(?:\.)(\d+)$/.exec( tokens.pop() );
 							return [ CONTINUE, 
 									{
 										server: this.server, 
-										version:version_tokens[0],
-										major: 	version_tokens[1] || 0,
-										minor: 	version_tokens[2] || 0,
-										bugfix: version_tokens[3] || 0
+										version:versionTokens[0],
+										major: 	versionTokens[1] || 0,
+										minor: 	versionTokens[2] || 0,
+										bugfix: versionTokens[3] || 0
 									}]
 						}
 	};
@@ -317,14 +317,14 @@ Client.config = {
 	
 	private.buffer = function( S, BufferStream ){
 		var chunks = BufferStream.toString().split( LINEBREAK );
-		this.rawDataReceived( S, response_buffer = response_buffer.concat( chunks ) );
+		this.rawDataReceived( S, responseBuffer = responseBuffer.concat( chunks ) );
 	};
 	
-	memcached.rawDataReceived = function( S, buffer_chunks ){
+	memcached.rawDataReceived = function( S, bufferChunks ){
 		var queue = [],	token, tokenSet, command, dataSet = '', resultSet, metaData, err = [];
 											
-		while( buffer_chunks.length && private.commandReceived.test( buffer_chunks[0] ) ){
-			token = buffer_chunks.shift();
+		while( bufferChunks.length && private.commandReceived.test( bufferChunks[0] ) ){
+			token = bufferChunks.shift();
 			tokenSet = token.split( ' ' );
 			
 			// special case for digit only's these are responses from INCR and DECR
@@ -334,18 +334,18 @@ Client.config = {
 			// special case for value, it's required that it has a second response!
 			// add the token back, and wait for the next response, we might be handling a big 
 			// ass response here. 
-			if( tokenSet[0] == 'VALUE' && buffer_chunks.indexOf( 'END') == -1 )
-				return buffer_chunks.unshift( token );
+			if( tokenSet[0] == 'VALUE' && bufferChunks.indexOf( 'END') == -1 )
+				return bufferChunks.unshift( token );
 			
 			// check for dedicated parser
 			if( private.parsers[ tokenSet[0] ] ){
 				
 				// fetch the response content
-				while( buffer_chunks.length ){
-					if( private.commandReceived.test( buffer_chunks[0] ) )
+				while( bufferChunks.length ){
+					if( private.commandReceived.test( bufferChunks[0] ) )
 						break;
 						
-					dataSet += ( dataSet.length > 0 ? LINEBREAK : '' ) + buffer_chunks.shift();
+					dataSet += ( dataSet.length > 0 ? LINEBREAK : '' ) + bufferChunks.shift();
 				};
 				
 				resultSet = private.parsers[ tokenSet[0] ].call( S, tokenSet, dataSet || token, err, queue, this );
@@ -394,8 +394,8 @@ Client.config = {
 			
 			// check if we need to remove an empty item from the array, as splitting on /r/n might cause an empty
 			// item at the end.. 
-			if( response_buffer[0] == '' )
-				response_buffer.shift();
+			if( responseBuffer[0] == '' )
+				responseBuffer.shift();
 		};
 	};
 	
@@ -410,7 +410,7 @@ Client.config = {
 	// get, gets all the same
 	memcached.gets = memcached.get = function( key, callback ){
 		if( Array.isArray( key ) )
-			return this.get_multi.apply( this, arguments );
+			return this.getMulti.apply( this, arguments );
 			
 		this.command({
 			key: key, callback: callback,
@@ -425,7 +425,7 @@ Client.config = {
 	};
 	
 	// handles get's with multiple keys
-	memcached.get_multi = function( keys, callback ){
+	memcached.getMulti = function( keys, callback ){
 		var memcached = this, responses = [], errors = [], calls,
 			handle = function( err, results ){
 				if( err ) errors.push( err );
@@ -461,13 +461,13 @@ Client.config = {
 			value = value.toString();	
 		}
 		
-		if( value.length > this.compression_threshold ){
+		if( value.length > this.compressionThreshold ){
 			flag = flag == FLAG_JSON ? FLAG_JCOMPRESSION : flag == FLAG_BINARY ? FLAG_BCOMPRESSION : FLAG_COMPRESSION;
 			value = Compression.Deflate( value );
 		}
 		
-		if( value.length > this.max_value )
-			return private.errorResponse( 'The length of the value is greater-than ' + this.compression_threshold, callback );
+		if( value.length > this.maxValue )
+			return private.errorResponse( 'The length of the value is greater-than ' + this.compressionThreshold, callback );
 				
 		this.command({
 			key: key, callback: callback, lifetime: lifetime, value: value, cas: cas,

@@ -13,9 +13,9 @@ var Ring = new HashRing(
 	);
 
 // Return the server based on the key
-sys.puts( Ring.get_node( "my-super-secret-cache-key" ) );
-sys.puts( Ring.get_node( "hello-world" ) );
-sys.puts( Ring.get_node( "my-super-secret-cache-key" ) );
+sys.puts( Ring.getNode( "my-super-secret-cache-key" ) );
+sys.puts( Ring.getNode( "hello-world" ) );
+sys.puts( Ring.getNode( "my-super-secret-cache-key" ) );
 
 // Different algorithms produce different hash maps. So choose wisely 
 var sha1Ring  = new HashRing(
@@ -31,6 +31,6 @@ var sha1Ring  = new HashRing(
 		'sha1' // optional algorithm for key hashing
 	);
 	
-sys.puts( sha1Ring.get_node( "my-super-secret-cache-key" ) );
-sys.puts( sha1Ring.get_node( "hello-world" ) );
-sys.puts( sha1Ring.get_node( "my-super-secret-cache-key" ) );
+sys.puts( sha1Ring.getNode( "my-super-secret-cache-key" ) );
+sys.puts( sha1Ring.getNode( "hello-world" ) );
+sys.puts( sha1Ring.getNode( "my-super-secret-cache-key" ) );
