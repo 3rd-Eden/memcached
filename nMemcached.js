@@ -49,7 +49,7 @@ function Client( args, options ){
 // Allows users to configure the memcached globally or per memcached client
 Client.config = {
 	maxKeySize: 251,			 // max keysize allowed by Memcached
-	maxExpiration: 2592000,	 // max expiration duration allowed by Memcached
+	maxExpiration: 2592000,		 // max expiration duration allowed by Memcached
 	maxValue: 1048576,			 // max length of value allowed by Memcached
 	
 	algorithm: 'md5',			 // hashing algorithm that is used for key mapping  
@@ -61,7 +61,7 @@ Client.config = {
 	retry: 30000,				 // timeout between retries, all call will be marked as cache miss
 	remove: false,				 // remove server if dead if false, we will attempt to reconnect
 
-	compressionThreshold: 10240,// only than will compression be usefull
+	compressionThreshold: 10240, // only than will compression be usefull
 	keyCompression: true		 // compress keys if they are to large (md5)
 };
 
@@ -78,7 +78,6 @@ Client.config = {
 		  FLAG_BCOMPRESSION		= 5<<1;
 
 	var memcached = nMemcached.prototype = new EventEmitter,
-		responseBuffer = [],
 		private = {},
 		undefined;
 	
@@ -103,6 +102,7 @@ Client.config = {
 			S.setTimeout( memcached.timeout );
 			S.setNoDelay(true);
 			S.metaData = [];
+			S.responseBuffer = [];
 			S.server = server;
 			S.tokens = serverTokens;
 			
@@ -228,21 +228,21 @@ Client.config = {
 	// parts of the whole client, the parser commands:
 	private.parsers = {
 		// handle error respones
-		NOT_FOUND: 		function( tokens, dataSet, err ){ return [ CONTINUE, false ] },
-		NOT_STORED: 	function( tokens, dataSet, err ){ return [ CONTINUE, false ] },
-		ERROR: 			function( tokens, dataSet, err ){ err.push( 'Received an ERROR response'); return [ FLUSH, false ] },
-		CLIENT_ERROR: 	function( tokens, dataSet, err ){ err.push( tokens.splice(1).join(' ') ); return [ BUFFER, false ] },
-		SERVER_ERROR: 	function( tokens, dataSet, err, queue, S, memcached ){ memcached.connectionIssue( tokens.splice(1).join(' '), S ); return [ CONTINUE, false ] },
+		'NOT_FOUND': 	function( tokens, dataSet, err ){ return [ CONTINUE, false ] },
+		'NOT_STORED': 	function( tokens, dataSet, err ){ return [ CONTINUE, false ] },
+		'ERROR': 		function( tokens, dataSet, err ){ err.push( 'Received an ERROR response'); return [ FLUSH, false ] },
+		'CLIENT_ERROR': function( tokens, dataSet, err ){ err.push( tokens.splice(1).join(' ') ); return [ BUFFER, false ] },
+		'SERVER_ERROR': function( tokens, dataSet, err, queue, S, memcached ){ memcached.connectionIssue( tokens.splice(1).join(' '), S ); return [ CONTINUE, false ] },
 		
 		// keyword based responses
-		STORED: 		function( tokens, dataSet ){ return [ CONTINUE, true ] },
-		DELETED: 		function( tokens, dataSet ){ return [ CONTINUE, true ] },
-		OK: 			function( tokens, dataSet ){ return [ CONTINUE, true ] },
-		EXISTS: 		function( tokens, dataSet ){ return [ CONTINUE, true ] },
-		END: 			function( tokens, dataSet, err, queue ){ if( !queue.length) queue.push( false ); return [ FLUSH, true ] },
+		'STORED': 		function( tokens, dataSet ){ return [ CONTINUE, true ] },
+		'DELETED': 		function( tokens, dataSet ){ return [ CONTINUE, true ] },
+		'OK': 			function( tokens, dataSet ){ return [ CONTINUE, true ] },
+		'EXISTS': 		function( tokens, dataSet ){ return [ CONTINUE, true ] },
+		'END': 			function( tokens, dataSet, err, queue ){ if( !queue.length) queue.push( false ); return [ FLUSH, true ] },
 		
 		// value parsing:
-		VALUE: 			function( tokens, dataSet, err, queue ){
+		'VALUE': 		function( tokens, dataSet, err, queue ){
 							var key = tokens[1], flag = +tokens[2], expire = tokens[3],
 								tmp;
 							
@@ -270,13 +270,13 @@ Client.config = {
 							
 							// Add to queue as multiple get key key key key key returns multiple values
 							queue.push( dataSet );
-							return [ BUFFER ] 
+							return [ BUFFER, false ] 
 						},
-		INCRDECR:		function( tokens ){ return [ CONTINUE, +tokens[1] ] },
-		STAT: 			function( tokens, dataSet, err, queue ){
+		'INCRDECR':		function( tokens ){ return [ CONTINUE, +tokens[1] ] },
+		'STAT': 			function( tokens, dataSet, err, queue ){
 							queue.push([tokens[1], /^\d+$/.test( tokens[2] ) ? +tokens[2] : tokens[2] ]); return [ BUFFER, true ] 
 						},
-		VERSION:		function( tokens, dataSet ){
+		'VERSION':		function( tokens, dataSet ){
 							var versionTokens = /(\d+)(?:\.)(\d+)(?:\.)(\d+)$/.exec( tokens.pop() );
 							return [ CONTINUE, 
 									{
@@ -286,33 +286,78 @@ Client.config = {
 										minor: 	versionTokens[2] || 0,
 										bugfix: versionTokens[3] || 0
 									}]
+						},
+		'ITEM':			function( tokens, dataSet, err, queue ){
+							queue.push({
+								key: tokens[1],
+								b: +tokens[2].substr(1),
+								s: +tokens[4]
+							});
+							return [ BUFFER, false ]
 						}
 	};
 	
 	// Parses down result sets
 	private.resultParsers = {
 		// combines the stats array, in to an object
-		stats: function( resultSet ){
-			var response = {};
-			
-			// add references to the retrieved server
-			response.server = this.server;
-			
-			// Fill the object 
-			resultSet.forEach(function( statSet ){
-				response[ statSet[0] ] =  statSet[1];
-			});
-			
-			return response;
-		},
+		'stats': 		function( resultSet ){
+							var response = {};
+							
+							// add references to the retrieved server
+							response.server = this.server;
+							
+							// Fill the object 
+							resultSet.forEach(function( statSet ){
+								response[ statSet[0] ] =  statSet[1];
+							});
+							
+							return response;
+						},
 		
-		'stats settings': function(){
-			return private.resultParsers.stats.apply( this, arguments );
-		},
-		
-		'stats slabs': function( resultSet ){
-			return resultSet;
-		}
+		// the settings uses the same parse format as the regular stats
+		'stats settings':function(){
+							return private.resultParsers.stats.apply( this, arguments );
+						},
+						
+		// Group slabs by slab id
+		'stats slabs':	function( resultSet ){
+							var response = {};
+							
+							// add references to the retrieved server
+							response.server = this.server;
+							
+							// Fill the object 
+							resultSet.forEach(function( statSet ){
+								var identifier = statSet[0].split( ':' );
+								
+								if( !response[ identifier[0] ] )
+									response[ identifier[0] ] = {};
+								
+								response[ identifier[0] ][ identifier[1] ] = statSet[1];
+								
+							});
+							
+							return response;
+						},
+		'stats items':	function( resultSet ){
+							var response = {};
+							
+							// add references to the retrieved server
+							response.server = this.server;
+							
+							// Fill the object 
+							resultSet.forEach(function( statSet ){
+								var identifier = statSet[0].split( ':' );
+								
+								if( !response[ identifier[1] ] )
+									response[ identifier[1] ] = {};
+								
+								response[ identifier[1] ][ identifier[2] ] = statSet[1];
+								
+							});
+							
+							return response;
+						}
 	};
 	
 	// Generates a RegExp that can be used to check if a chunk is memcached response identifier	
@@ -324,14 +369,14 @@ Client.config = {
 	// in to one response stream. 
 	private.buffer = function( S, BufferStream ){
 		var chunks = BufferStream.toString().split( LINEBREAK );
-		this.rawDataReceived( S, responseBuffer = responseBuffer.concat( chunks ) );
+		this.rawDataReceived( S, S.responseBuffer = S.responseBuffer.concat( chunks ) );
 	};
 	
 	// The actual parsers function that scan over the responseBuffer in search of Memcached response
 	// identifiers. Once we have found one, we will send it to the dedicated parsers that will transform
 	// the data in a human readable format, deciding if we should queue it up, or send it to a callback fn. 
 	memcached.rawDataReceived = function( S, bufferChunks ){
-		var queue = [],	token, tokenSet, command, dataSet = '', resultSet, metaData, err = [];
+		var queue = [],	token, tokenSet, command, dataSet = '', resultSet, metaData, err = [], tmp;
 											
 		while( bufferChunks.length && private.commandReceived.test( bufferChunks[0] ) ){
 			token = bufferChunks.shift();
@@ -369,15 +414,18 @@ Client.config = {
 						metaData = S.metaData.shift();
 						resultSet = queue;
 						
-						// see if optional parsing needs to be applied to make the result set more readable
-						if( private.resultParsers[ metaData.type ] )
-							queue = private.resultParsers[ metaData.type ].call( S, resultSet, err );
-							
+						// if we have a callback, call it
 						if( metaData.callback )	
-							metaData.callback.call( metaData, err.length ? err : err[0], !Array.isArray( queue ) || queue.length > 1 ? queue : queue[0] );
+							metaData.callback.call( 
+								metaData, err.length ? err : err[0],
+								
+								// see if optional parsing needs to be applied to make the result set more readable
+								private.resultParsers[ metaData.type ] ? private.resultParsers[ metaData.type ].call( S, resultSet, err ) :
+								!Array.isArray( queue ) || queue.length > 1 ? queue : queue[0] 
+							);
 							
-						queue = [];
-						err = [];
+						queue.length = 0;
+						err.length = 0;
 						break;
 						
 					case CONTINUE:	
@@ -387,7 +435,7 @@ Client.config = {
 						if( metaData.callback )
 							metaData.callback.call( metaData, err.length > 1 ? err : err[0], resultSet[0] );
 							
-						err = [];
+						err.length = 0;
 						break;
 				}
 			} else {
@@ -404,8 +452,8 @@ Client.config = {
 			
 			// check if we need to remove an empty item from the array, as splitting on /r/n might cause an empty
 			// item at the end.. 
-			if( responseBuffer[0] == '' )
-				responseBuffer.shift();
+			if( bufferChunks[0] == '' )
+				bufferChunks.shift();
 		};
 	};
 	
@@ -499,6 +547,7 @@ Client.config = {
 	memcached.set = Utils.curry( false, private.setters, 'set', [[ 'key', String ], [ 'lifetime', Number ], [ 'value', String ], [ 'callback', Function ]] );
 	memcached.replace = Utils.curry( false, private.setters, 'replace', [[ 'key', String ], [ 'lifetime', Number ], [ 'value', String ], [ 'callback', Function ]] );
 	
+	// The following functions require other variables than the "default" variables that we assign to the private.setters
 	memcached.add = function( key, value, callback ){
 		private.setters.call( this, 'add', [[ 'key', String ], [ 'value', String ], [ 'callback', Function ]], key, value, 0, callback );
 	};
@@ -554,7 +603,9 @@ Client.config = {
 			handle = function( err, results ){
 				if( err ) errors.push( err );
 				if( results ) responses = responses.concat( results );
-				if( !--calls ) callback( errors, responses.length > 1 ? responses : responses[0] );
+				
+				// multi calls should ALWAYS return an array!
+				if( !--calls ) callback( errors, responses );
 			};
 		
 		this.multi( false, function( server, keys, index, totals ){
@@ -576,5 +627,24 @@ Client.config = {
 	memcached.stats = Utils.curry( false, private.singles, 'stats' );
 	memcached.settings = Utils.curry( false, private.singles, 'stats settings' );
 	memcached.slabs = Utils.curry( false, private.singles, 'stats slabs' );
+	memcached.items = Utils.curry( false, private.singles, 'stats items' );
 	
-})( Client )
+	// You need to use the items dump to get the correct server and slab settings
+	// see simple_cachedump.js for an example
+	memcached.cachedump = function( server, slabid, number, callback ){
+		this.command({
+				callback: callback,
+				number: number,
+				slabid: slabid,
+				
+				// validate the arguments
+				validate: [[ 'number', Number ], [ 'slabid', Number ], [ 'callback', Function ]],
+				
+				type: 'stats cachedump',
+				command: 'stats cachedump ' + slabid + ' ' + number
+			},
+			server
+		);
+	};
+	
+})( Client );
