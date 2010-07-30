@@ -111,7 +111,7 @@ Client.config = {
 				close	: function(){ Manager.remove( this ) },
 				error	: function( err ){ memcached.connectionIssue( err, S, callback ) },
 				data	: Utils.curry( memcached, private.buffer, S ),
-				timeout : function(){ Manager.remove( this ) },
+				timeout : function(){ Manager.remove( this ); },
 				end		: S.end
 			});
 			
@@ -361,7 +361,7 @@ Client.config = {
 	};
 	
 	// Generates a RegExp that can be used to check if a chunk is memcached response identifier	
-	private.commandReceived = new RegExp( '^(?:' + Object.keys( private.parsers ).join( '|' ) + ')' );
+	private.commandReceived = new RegExp( '^(?:' + Object.keys( private.parsers ).join( '|' ) + '|\\d' + ')' );
 	
 	// When working with large chunks of responses, node chunks it in to peices. So we might have
 	// half responses. So we are going to buffer up the buffer and user our buffered buffer to query
@@ -377,15 +377,16 @@ Client.config = {
 	// the data in a human readable format, deciding if we should queue it up, or send it to a callback fn. 
 	memcached.rawDataReceived = function( S, bufferChunks ){
 		var queue = [],	token, tokenSet, command, dataSet = '', resultSet, metaData, err = [], tmp;
-											
+		
 		while( bufferChunks.length && private.commandReceived.test( bufferChunks[0] ) ){
+
 			token = bufferChunks.shift();
 			tokenSet = token.split( ' ' );
 			
 			// special case for digit only's these are responses from INCR and DECR
 			if( /\d+/.test( tokenSet[0] ))
 				tokenSet.unshift( 'INCRDECR' );
-			
+				
 			// special case for value, it's required that it has a second response!
 			// add the token back, and wait for the next response, we might be handling a big 
 			// ass response here. 
@@ -415,7 +416,7 @@ Client.config = {
 						resultSet = queue;
 						
 						// if we have a callback, call it
-						if( metaData.callback )	
+						if( metaData && metaData.callback )	
 							metaData.callback.call( 
 								metaData, err.length ? err : err[0],
 								
@@ -432,7 +433,7 @@ Client.config = {
 					default:
 						metaData = S.metaData.shift();
 						
-						if( metaData.callback )
+						if( metaData && metaData.callback )
 							metaData.callback.call( metaData, err.length > 1 ? err : err[0], resultSet[0] );
 							
 						err.length = 0;
@@ -511,7 +512,25 @@ Client.config = {
 	// syntax for the Memcached server. Some commands do not require a lifetime and a flag, but the
 	// memcached server is smart enough to ignore those. 
 	private.setters = function( type, validate, key, value, lifetime, callback, cas ){
-		var flag = 0;
+		var flag = 0,
+			memcached = this,
+			process = function( err, value ){
+				if( err )
+					return private.errorResponse( err, callback );
+					
+				if( value.length > memcached.maxValue )
+					return private.errorResponse( 'The length of the value is greater-than ' + memcached.compressionThreshold, callback );
+						
+				memcached.command({
+					key: key, callback: callback, lifetime: lifetime, value: value, cas: cas,
+					
+					// validate the arguments
+					validate: validate,
+					
+					type: type,
+					command: [ type, key, flag, lifetime, Buffer.byteLength( value ) ].join( ' ' ) + ( cas ? cas : '' ) + LINEBREAK + value
+				})
+			};
 		
 		if( Buffer.isBuffer( value ) ){
 			flag = FLAG_BINARY;
@@ -525,32 +544,16 @@ Client.config = {
 		
 		if( value.length > this.compressionThreshold ){
 			flag = flag == FLAG_JSON ? FLAG_JCOMPRESSION : flag == FLAG_BINARY ? FLAG_BCOMPRESSION : FLAG_COMPRESSION;
-			value = Compression.Deflate( value );
+			value = Compression.Deflate( process );
+		} else {
+			process( false, value );
 		}
-		
-		if( value.length > this.maxValue )
-			return private.errorResponse( 'The length of the value is greater-than ' + this.compressionThreshold, callback );
-				
-		this.command({
-			key: key, callback: callback, lifetime: lifetime, value: value, cas: cas,
-			
-			// validate the arguments
-			validate: validate,
-			
-			type: type,
-			command: [ type, key, flag, lifetime, Buffer.byteLength( value ) ].join( ' ' ) + ( cas ? cas : '' ) + LINEBREAK + value
-		})
-	
 	};
 	
 	// Curry the function and so we can tell the type our private set function
 	memcached.set = Utils.curry( false, private.setters, 'set', [[ 'key', String ], [ 'lifetime', Number ], [ 'value', String ], [ 'callback', Function ]] );
 	memcached.replace = Utils.curry( false, private.setters, 'replace', [[ 'key', String ], [ 'lifetime', Number ], [ 'value', String ], [ 'callback', Function ]] );
-	
-	// The following functions require other variables than the "default" variables that we assign to the private.setters
-	memcached.add = function( key, value, callback ){
-		private.setters.call( this, 'add', [[ 'key', String ], [ 'value', String ], [ 'callback', Function ]], key, value, 0, callback );
-	};
+	memcached.add = Utils.curry( false, private.setters, 'replace', [[ 'key', String ], [ 'lifetime', Number ], [ 'value', String ], [ 'callback', Function ]] );
 	
 	memcached.cas = function( key, value, cas, lifetime, callback ){
 		private.setters.call( this, 'cas', [[ 'key', String ], [ 'lifetime', Number ], [ 'value', String ], [ 'callback', Function ]], key, value, lifetime, callback, cas );
@@ -579,8 +582,8 @@ Client.config = {
 	};
 	
 	// Curry the function and so we can tell the type our private incrdecr
-	memcached.increment = Utils.curry( false, private.incrdecr, 'incr' );
-	memcached.decrement = Utils.curry( false, private.incrdecr, 'decr' );
+	memcached.increment = memcached.incr = Utils.curry( false, private.incrdecr, 'incr' );
+	memcached.decrement = memcached.decr = Utils.curry( false, private.incrdecr, 'decr' );
 	
 	// Deletes the keys from the servers
 	memcached.del = function( key, callback ){
