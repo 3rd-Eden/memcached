@@ -1,15 +1,17 @@
 #nMemcached
 
-	NOTE: This module is not yet ready for production usage. If I called it stable i would lieing ;)
-	WORKING DRAFT
-
-nMemcached is a fully featured Memcached client for node.js. nMemcached is build with scaling, high availability and exceptional performance in mind. We use consistent hashing to store the data across different nodes. Consistent hashing is a scheme that provides a hash table functionality in a way that adding or removing a server node does not significantly change the mapping of the keys to server nodes. The algorithm that is used for consistent hashing is the same as libketama.
+nMemcached is a fully featured Memcached client for Node.js. nMemcached is build with scaling, high availability and exceptional performance in mind. We use consistent hashing to store the data across different nodes. Consistent hashing is a scheme that provides a hash table functionality in a way that adding or removing a server node does not significantly change the mapping of the keys to server nodes. The algorithm that is used for consistent hashing is the same as `libketama`.
 
 There are different ways to handle errors for example, when a server becomes unavailable you can configure the client to see all requests to that server as cache misses until it goes up again. It's also possible to automatically remove the affected server from the consistent hashing algorithm or provide nMemcached with a failover server that can take the place of the unresponsive server.
 
 When these issues occur the nMemcached client will emit different events where you can subscribe to containing detailed information about the issues.
 
 The client is configurable on different levels. There's a global configuration that you update so all you Memcached clusters will use the same failure configuration for example, but it's also possible to overwrite these changes per nMemcached instance.
+
+	**Project status** Working, but untested. There are still a couple of internal cavecats that needs to be overcome. 
+	At this point compression and sending `Buffer` objects as values are not supported. The project is getting closer to
+	it's first alpha release. So at this point, I would not recommonend for production servers **yet**. Feel free to contribute
+	and apply patches where needed.
 
 ## Setting up the client
 
@@ -50,21 +52,125 @@ If you would implement one of the above formats, your constructor would somethin
 
 There 2 kinds of options that can be configured. A global configuration that will be inherited by all Memcached servers instances and a client specific configuration that can be used to overwrite the globals. The options should be formatted in an JavaScript `object`. They both use the same object structure:
 
-* `max_key_size`: *250*, the max size of they key allowed by the Memcached server.
-* `max_expiration`: *2592000*, the max expiration of keys by the Memcached server in milliseconds.
-* `max_value`: *1048576*, the max size of a value that is allowed by the Memcached server.
-* `pool_size`: *10*, the maximum connections we can allocate in our connection pool.
+* `maxKeySize`: *250*, the max size of they key allowed by the Memcached server.
+* `maxExpiration`: *2592000*, the max expiration of keys by the Memcached server in milliseconds.
+* `maxValue`: *1048576*, the max size of a value that is allowed by the Memcached server.
+* `poolSize`: *10*, the maximum connections we can allocate in our connection pool.
+* `algorithm`: *md5*, the hashing algorithm that should be used to generate the hashRing values.
 * `reconnect`: *18000000*, when the server is marked as dead we will attempt to reconnect every x milliseconds.
+* `timeout`: *5000*, after x ms the server should send a timeout if we can't connect. This will also be used close the connection if we are idle.
 * `retries`: *5*, amount of tries before we mark the server as dead.
-* `retry`: *30000*, timeout between each retry in x milliseconds
+* `retry`: *30000*, timeout between each retry in x milliseconds.
 * `remove`: *false*, when the server is marked as dead you can remove it from the pool so all other will receive the keys instead.
 * `failOverServers`: *undefined*, the ability use these servers as failover when the dead server get's removed from the consistent hashing scheme. This must be an array of servers confirm the server_locations specification.
-* `compression_threshold`: *10240*, minimum length of value before we start using compression for the value.
-* `key_compression`: *true*, compress keys using md5 if they exceed the max_key_size option.
+* `compressionThreshold`: *10240*, minimum length of value before we start using compression for the value.
+* `keyCompression`: *true*, compress keys using md5 if they exceed the maxKeySize option.
 
 Example usage:
 
 	var memcache = new nMemcached('localhost:11212', {retries:10,retry:10000,remove:true,failOverServers:['192.168.0.103:11212']});
+
+If you wish to configure the options globally:
+
+	var nMemcached = require( 'nMemcached' ).Client;
+	// all global configurations should be applied to the .config object of the Client.
+	nMemcached.config.poolSize = 25;
+
+## API
+
+### Public methods
+
+
+### Private methods
+The following methods are intended for private usage:
+
+##### .connect
+Fetches or generates a connection for the given server. The supplied callback function will receive a reference to the connection as argument.
+If there are issues with the server connection, we are going to respond with cache-miss pattern.
+
+**Arguments**
+`server`: *String*, The server that needs a connection, the format must be confirm the server_locations specification.
+`callback`: *Function*, The callback function that receives the net.Stream connection. It will be called with 2 arguments `error` and `connection`.
+
+**Example**
+	memcached.connect( '192.168.0.103:11212', function( err, conn ){
+		if( err ) throw new Error( err );
+		console.log( conn.server );
+	});
+
+##### .multi
+A small wrapper function that makes it easier to query multiple Memcached servers. It will return the location for each key or the complete list of servers.
+
+**Arguments**
+`keys`: *Array* **(optional)**, They keys that needs to be converted to a server,.
+`callback`: *Function*, The callback function for the data, it will be called for **each** key. It will be called with 4 arguments:
+
+1.	`server`: *String*, The server location.
+2.	`key`: *String*, The key associated with the server, if you didn't specify keys, this variable will be undefined.
+3.	`index`: *Number*, The current index of the loop
+4.	`total`: *Number*, The total amount server retrieved.
+
+**Example**
+	memcached.multi( false, function( server, key, index, totals ){
+		if( err ) throw new Error( err );
+		
+		this.connect( server, function( err, conn ){
+			console.log( "connection ready" )
+		})
+	});
+
+##### .command
+
+This is the core functionality of the nMemcached client. All public API's are routed through this function. It takes care of the argument validations
+Server retrieval ( If the server argument isn't specified ). After all data ready a connection is asked for the private `connect` method and the command
+is written to the Memcached server.
+
+**Arguments**
+`query`: *Object*, The metaData object, see the `Callbacks` section for the specification.
+`server`: *String*, The server the to connect. This is only needed when the metaData object doesn't contain a key property to retrieve the server from. 
+
+**Example**
+	memcached.command({
+		key: 'key', callback: function(){ console.dir( arguments ); },
+
+		// validate the arguments
+		validate: [[ 'key', String ], [ 'callback', Function ]],
+
+		// used for the query
+		type: 'delete',
+		command: 'delete key'
+	});
+
+##### .connectionIssue
+
+A internal function for logging issues with connections. As there can be various of ways that an error occurs we need solid issue manager to handle
+all these cases. For example server could crash or the Memcached server could respond with `SERVER ERROR <broken>`.
+
+**Arguments**
+`error`: *String*, The actual error message.
+`Stream`: *net.Stream*, A reference to the connection stream where the error occurred on.
+`callback`: *Function* **(optional)**, The callback function of a potential request, it will be marked as cache miss if it was provided
+
+**Example**
+	memcached.connectionIssue( "Server down", connectionReference );
+
+## Callbacks
+
+Each method requires a callback function. Once this function get executed there will be 2 variables applied:
+
+* `error`: A error response if something went wrong while retrieving data from the Memcached server. Depending on the type of request this will either be an string or an Array with multiple errors.
+* `response`: The actual result from the Memcached server. If the response is `false` or `undefined` than a cache miss occurred. Cache misses will also occur when there is an error. So you might want to check on errors first.
+
+When we have a successful response, the context of the callback function will shift to a metaData object. The metaData object contains all information that we used to generate the request for the Memcached server. The metaData object contains the following properties:
+
+* `start`: Date in milliseconds when the request was received 
+* `execution`: Total execution time for the request, including response parsing.
+* `callback`: Reference to the callback function
+* `type`: The type of Memcached command
+* `command`: The compiled command that was send through the sockets
+* `validate`: The properties of metaData object that needs type validation.
+
+And all the arguments you have send to the method, this depends on the method you have called. 
 	
 ## Events
 
@@ -74,7 +180,7 @@ When connection issues occur we send out different notifications using the `Even
 
 The details Object contains the various of error messages that caused, the following 3 will always be present in all error events:
 
-* `server`: the server where the issue occured on
+* `server`: the server where the issue occurred on
 * `tokens`: a array of the parsed server string in `[port, hostname]` format.
 * `messages`: a array containing all error messages that this server received. As messages are added to the array using .push(), the first issue will at the beginning and the latest error at the end of the array.
 

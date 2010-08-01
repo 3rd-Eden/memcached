@@ -7,9 +7,8 @@ var HashRing 	 = require('./lib/hashring').HashRing,
 	Utils		 = require('./lib/utils'),
 	Compression	 = require('./lib/gzip'),
 	Manager		 = Connection.Manager,
-	IssueLog	 = Connection.IssueLog,
-	Available	 = Connection.Available;
-
+	IssueLog	 = Connection.IssueLog;
+	
 exports.Client = Client;
 
 // The constructor
@@ -17,7 +16,7 @@ function Client( args, options ){
 	var servers = [],
 		weights = {},
 		key;
-
+	
 	// Parse down the connection arguments	
 	switch( Object.prototype.toString.call( args ) ){
 		case '[object String]':
@@ -156,14 +155,16 @@ Client.config = {
 		server = server || this.HashRing.getNode( query.key );
 		
 		if( server in this.issues && this.issues[ server ].failed )
-			return query.callback( false, false );
+			return query.callback && query.callback( false, false );
 		
 		this.connect( server, function( error, S ){
 			
-			if( !S ) return query.callback( false, false );
-			if( error ) return query.callback( error );
-			if( S.readyState !== 'open' ) return query.callback( 'Connection readyState is set to ' + S.readySate );
+			if( !S ) return query.callback && query.callback( false, false );
+			if( error ) return query.callback && query.callback( error );
+			if( S.readyState !== 'open' ) return query.callback && query.callback( 'Connection readyState is set to ' + S.readySate );
 			
+			// used for request timing
+			query.start = +new Date;
 			S.metaData.push( query );
 			S.write( query.command + LINEBREAK );
 		});
@@ -416,7 +417,8 @@ Client.config = {
 						resultSet = queue;
 						
 						// if we have a callback, call it
-						if( metaData && metaData.callback )	
+						if( metaData && metaData.callback ){
+							metaData.execution = +new Date - metaData.start;
 							metaData.callback.call( 
 								metaData, err.length ? err : err[0],
 								
@@ -424,6 +426,7 @@ Client.config = {
 								private.resultParsers[ metaData.type ] ? private.resultParsers[ metaData.type ].call( S, resultSet, err ) :
 								!Array.isArray( queue ) || queue.length > 1 ? queue : queue[0] 
 							);
+						}
 							
 						queue.length = 0;
 						err.length = 0;
@@ -433,8 +436,10 @@ Client.config = {
 					default:
 						metaData = S.metaData.shift();
 						
-						if( metaData && metaData.callback )
+						if( metaData && metaData.callback ){
+							metaData.execution = +new Date - metaData.start;
 							metaData.callback.call( metaData, err.length > 1 ? err : err[0], resultSet[0] );
+						}
 							
 						err.length = 0;
 						break;
@@ -442,7 +447,10 @@ Client.config = {
 			} else {
 				// handle unkown responses
 				metaData = S.metaData.shift();
-				metaData.callback.call( metaData, 'Unknown response from the memcached server: ' + token, false );
+				if( metaData && metaData.callback ){
+					metaData.execution = +new Date - metaData.start;
+					metaData.callback.call( metaData, 'Unknown response from the memcached server: ' + token, false );
+				}
 			}
 			
 			// cleanup

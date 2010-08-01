@@ -9,6 +9,10 @@
 		{
 			"modules": [ "./lib/utils" ],
 			"description:": "Add replaceServer and removeServer functionality to our HashRing, so we remove dead servers and still have good working key chain"
+		},
+		{
+			"modules": [ "nMemcached", "./lib/connection" ],
+			"description:": "Once a connection stream dies, we need to call all queued metaData's callback's and mark the as a cache miss. So users can expect that the callback will always be called. No matter what happens."
 		}
 	],
 	
