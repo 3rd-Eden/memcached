@@ -362,7 +362,8 @@ Client.config = {
 	};
 	
 	// Generates a RegExp that can be used to check if a chunk is memcached response identifier	
-	private.commandReceived = new RegExp( '^(?:' + Object.keys( private.parsers ).join( '|' ) + '|\\d' + ')' );
+	private.allCommands = new RegExp( '^(?:' + Object.keys( private.parsers ).join( '|' ) + '|\\d' + ')' );
+	private.bufferedCommands = new RegExp( '^(?:' + Object.keys( private.parsers ).join( '|' ) + ')' );
 	
 	// When working with large chunks of responses, node chunks it in to peices. So we might have
 	// half responses. So we are going to buffer up the buffer and user our buffered buffer to query
@@ -379,7 +380,7 @@ Client.config = {
 	memcached.rawDataReceived = function( S, bufferChunks ){
 		var queue = [],	token, tokenSet, command, dataSet = '', resultSet, metaData, err = [], tmp;
 		
-		while( bufferChunks.length && private.commandReceived.test( bufferChunks[0] ) ){
+		while( bufferChunks.length && private.allCommands.test( bufferChunks[0] ) ){
 
 			token = bufferChunks.shift();
 			tokenSet = token.split( ' ' );
@@ -399,7 +400,7 @@ Client.config = {
 				
 				// fetch the response content
 				while( bufferChunks.length ){
-					if( private.commandReceived.test( bufferChunks[0] ) )
+					if( private.bufferedCommands.test( bufferChunks[0] ) )
 						break;
 						
 					dataSet += ( dataSet.length > 0 ? LINEBREAK : '' ) + bufferChunks.shift();
