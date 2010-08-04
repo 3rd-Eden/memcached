@@ -83,7 +83,7 @@ If you wish to configure the options globally:
 
 ### Private methods
 The following methods are intended for private usage:
-
+---------------------------------------
 #### .connect
 Fetches or generates a connection for the given server. The supplied callback function will receive a reference to the connection as argument.
 If there are issues with the server connection, we are going to respond with cache-miss pattern.
@@ -99,7 +99,7 @@ Example
 		if( err ) throw new Error( err );
 		console.log( conn.server );
 	});
-
+---------------------------------------
 #### .multi
 A small wrapper function that makes it easier to query multiple Memcached servers. It will return the location for each key or the complete list of servers.
 
@@ -122,7 +122,7 @@ Example
 			console.log( "connection ready" )
 		})
 	});
-
+---------------------------------------
 #### .command
 
 This is the core functionality of the nMemcached client. All public API's are routed through this function. It takes care of the argument validations
@@ -146,7 +146,7 @@ Example
 		type: 'delete',
 		command: 'delete key'
 	});
-
+---------------------------------------
 #### .connectionIssue
 
 A internal function for logging issues with connections. As there can be various of ways that an error occurs we need solid issue manager to handle
@@ -162,7 +162,6 @@ all these cases. For example server could crash or the Memcached server could re
 
 Example
 	memcached.connectionIssue( "Server down", connectionReference );
-
 ## Callbacks
 
 Each method requires a callback function. Once this function get executed there will be 2 variables applied:
