@@ -1,4 +1,4 @@
-var	nMemcached = require( '../nMemcached' ).Client,
+var	nMemcached = require( '../nMemcached' ),
 	assert = require('./assert'),
 	memcached;
 

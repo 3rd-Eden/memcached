@@ -1,5 +1,5 @@
 var sys = require( 'sys' ),
-	nMemcached = require( '../nMemcached' ).Client,
+	nMemcached = require( '../nMemcached' ),
 	memcached;
 
 // Set a global configuration

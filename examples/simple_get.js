@@ -1,4 +1,4 @@
-var	nMemcached = require( '../nMemcached' ).Client,
+var	nMemcached = require( '../nMemcached' ),
 	memcached;
 
 // connect to our memcached server on host 10.211.55.5, port 11211

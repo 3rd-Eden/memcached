@@ -17,7 +17,7 @@ The client is configurable on different levels. There's a global configuration t
 
 The constructor of the nMemcached client take 2 different arguments `server locations` and `options`. Syntax:
 
-	var nMemcached = require('nMemcached').Client;
+	var nMemcached = require('nMemcached');
 	var memcached = new nMemcached(Server locations, options);
 
 ### Server locations
@@ -84,25 +84,29 @@ If you wish to configure the options globally:
 ### Private methods
 The following methods are intended for private usage:
 
-##### .connect
+#### .connect
 Fetches or generates a connection for the given server. The supplied callback function will receive a reference to the connection as argument.
 If there are issues with the server connection, we are going to respond with cache-miss pattern.
 
 **Arguments**
+
 `server`: *String*, The server that needs a connection, the format must be confirm the server_locations specification.
+
 `callback`: *Function*, The callback function that receives the net.Stream connection. It will be called with 2 arguments `error` and `connection`.
 
-**Example**
+Example
 	memcached.connect( '192.168.0.103:11212', function( err, conn ){
 		if( err ) throw new Error( err );
 		console.log( conn.server );
 	});
 
-##### .multi
+#### .multi
 A small wrapper function that makes it easier to query multiple Memcached servers. It will return the location for each key or the complete list of servers.
 
 **Arguments**
-`keys`: *Array* **(optional)**, They keys that needs to be converted to a server,.
+
+`keys`: *Array* **(optional)**, They keys that needs to be converted to a server.
+
 `callback`: *Function*, The callback function for the data, it will be called for **each** key. It will be called with 4 arguments:
 
 1.	`server`: *String*, The server location.
@@ -110,7 +114,7 @@ A small wrapper function that makes it easier to query multiple Memcached server
 3.	`index`: *Number*, The current index of the loop
 4.	`total`: *Number*, The total amount server retrieved.
 
-**Example**
+Example
 	memcached.multi( false, function( server, key, index, totals ){
 		if( err ) throw new Error( err );
 		
@@ -119,17 +123,19 @@ A small wrapper function that makes it easier to query multiple Memcached server
 		})
 	});
 
-##### .command
+#### .command
 
 This is the core functionality of the nMemcached client. All public API's are routed through this function. It takes care of the argument validations
 Server retrieval ( If the server argument isn't specified ). After all data ready a connection is asked for the private `connect` method and the command
 is written to the Memcached server.
 
 **Arguments**
+
 `query`: *Object*, The metaData object, see the `Callbacks` section for the specification.
+
 `server`: *String*, The server the to connect. This is only needed when the metaData object doesn't contain a key property to retrieve the server from. 
 
-**Example**
+Example
 	memcached.command({
 		key: 'key', callback: function(){ console.dir( arguments ); },
 
@@ -141,17 +147,20 @@ is written to the Memcached server.
 		command: 'delete key'
 	});
 
-##### .connectionIssue
+#### .connectionIssue
 
 A internal function for logging issues with connections. As there can be various of ways that an error occurs we need solid issue manager to handle
 all these cases. For example server could crash or the Memcached server could respond with `SERVER ERROR <broken>`.
 
 **Arguments**
+
 `error`: *String*, The actual error message.
+
 `Stream`: *net.Stream*, A reference to the connection stream where the error occurred on.
+
 `callback`: *Function* **(optional)**, The callback function of a potential request, it will be marked as cache miss if it was provided
 
-**Example**
+Example
 	memcached.connectionIssue( "Server down", connectionReference );
 
 ## Callbacks

@@ -9,7 +9,7 @@ var HashRing 	 = require('./lib/hashring').HashRing,
 	Manager		 = Connection.Manager,
 	IssueLog	 = Connection.IssueLog;
 	
-exports.Client = Client;
+exports = Client;
 
 // The constructor
 function Client( args, options ){
@@ -82,7 +82,7 @@ Client.config = {
 	
 	// Creates or generates a new connection for the give server, the callback will recieve the connection
 	// if the operation was sucessfull
-	memcached.connect = function( server, callback ){
+	memcached.connect = function connect( server, callback ){
 		if( server in this.issues && this.issues[ server ].failed )
 			return callback( false, false );
 		
@@ -124,7 +124,7 @@ Client.config = {
 	
 	// Creates a multi stream, so it's easier to query agains
 	// multiple memcached servers. 
-	memcached.multi = function( keys, callback ){
+	memcached.multi = function multi( keys, callback ){
 		var map = {}, memcached = this, servers, i;
 		
 		// gets all servers based on the supplied keys,
@@ -149,7 +149,7 @@ Client.config = {
 	
 	// Executes the command on the net.Stream, if no server is supplied it will use the query.key to get 
 	// the server from the HashRing
-	memcached.command = function( query, server ){
+	memcached.command = function command( query, server ){
 		if( query.validation && !Utils.validateArg( query, this ))  return;
 				
 		server = server || this.HashRing.getNode( query.key );
@@ -171,7 +171,7 @@ Client.config = {
 	};
 	
 	// Logs all connection issues, and handles them off. Marking all requests as cache misses.
-	memcached.connectionIssue = function( error, S, callback ){
+	memcached.connectionIssue = function connectionIssue( error, S, callback ){
 		// end connection and mark callback as cache miss
 		if( S && S.end )
 			S.end();
@@ -220,7 +220,7 @@ Client.config = {
 	};
 	
 	// Kills all active connections
-	memcached.end = function(){
+	memcached.end = function end(){
 		var memcached = this;
 		Object.keys( this.connections ).forEach(function( key ){ memcached.connections[ key ].free(0) });
 	};
@@ -369,7 +369,7 @@ Client.config = {
 	// half responses. So we are going to buffer up the buffer and user our buffered buffer to query
 	// against. Also when you execute allot of .writes to the same stream, node will combine the responses
 	// in to one response stream. 
-	private.buffer = function( S, BufferStream ){
+	private.buffer = function BufferBuffer( S, BufferStream ){
 		var chunks = BufferStream.toString().split( LINEBREAK );
 		this.rawDataReceived( S, S.responseBuffer = S.responseBuffer.concat( chunks ) );
 	};
@@ -377,7 +377,7 @@ Client.config = {
 	// The actual parsers function that scan over the responseBuffer in search of Memcached response
 	// identifiers. Once we have found one, we will send it to the dedicated parsers that will transform
 	// the data in a human readable format, deciding if we should queue it up, or send it to a callback fn. 
-	memcached.rawDataReceived = function( S, bufferChunks ){
+	memcached.rawDataReceived = function rawDataReceived( S, bufferChunks ){
 		var queue = [],	token, tokenSet, command, dataSet = '', resultSet, metaData, err = [], tmp;
 		
 		while( bufferChunks.length && private.allCommands.test( bufferChunks[0] ) ){
@@ -468,7 +468,7 @@ Client.config = {
 	};
 	
 	// Small wrapper function that only executes errors when we have a callback
-	private.errorResponse = function error( error, callback ){
+	private.errorResponse = function errorResponse( error, callback ){
 		if( typeof callback == 'function' )
 			callback( error, false );
 		
@@ -478,7 +478,7 @@ Client.config = {
 	// This is where the actual Memcached API layer begins:
 	
 	// Get, gets all the same, no difference
-	memcached.gets = memcached.get = function( key, callback ){
+	memcached.gets = memcached.get = function get( key, callback ){
 		if( Array.isArray( key ) )
 			return this.getMulti.apply( this, arguments );
 			
@@ -495,7 +495,7 @@ Client.config = {
 	};
 	
 	// Handles get's with multiple keys
-	memcached.getMulti = function( keys, callback ){
+	memcached.getMulti = function getMulti( keys, callback ){
 		var memcached = this, responses = [], errors = [], calls,
 			handle = function( err, results ){
 				if( err ) errors.push( err );
@@ -520,7 +520,7 @@ Client.config = {
 	// function to ease maintainance. This is possible because most set commands will use the same
 	// syntax for the Memcached server. Some commands do not require a lifetime and a flag, but the
 	// memcached server is smart enough to ignore those. 
-	private.setters = function( type, validate, key, value, lifetime, callback, cas ){
+	private.setters = function setters( type, validate, key, value, lifetime, callback, cas ){
 		var flag = 0,
 			memcached = this,
 			process = function( err, value ){
@@ -564,15 +564,15 @@ Client.config = {
 	memcached.replace = Utils.curry( false, private.setters, 'replace', [[ 'key', String ], [ 'lifetime', Number ], [ 'value', String ], [ 'callback', Function ]] );
 	memcached.add = Utils.curry( false, private.setters, 'replace', [[ 'key', String ], [ 'lifetime', Number ], [ 'value', String ], [ 'callback', Function ]] );
 	
-	memcached.cas = function( key, value, cas, lifetime, callback ){
+	memcached.cas = function checkandset( key, value, cas, lifetime, callback ){
 		private.setters.call( this, 'cas', [[ 'key', String ], [ 'lifetime', Number ], [ 'value', String ], [ 'callback', Function ]], key, value, lifetime, callback, cas );
 	};
 	
-	memcached.append = function( key, value, callback ){
+	memcached.append = function append( key, value, callback ){
 		private.setters.call( this, 'append', [[ 'key', String ], [ 'lifetime', Number ], [ 'value', String ], [ 'callback', Function ]], key, value, 0, callback );
 	};
 	
-	memcached.prepend = function( key, value, callback ){
+	memcached.prepend = function prepend( key, value, callback ){
 		private.setters.call( this, 'prepend', [[ 'key', String ], [ 'lifetime', Number ], [ 'value', String ], [ 'callback', Function ]], key, value, 0, callback );
 	};
 	
@@ -595,7 +595,7 @@ Client.config = {
 	memcached.decrement = memcached.decr = Utils.curry( false, private.incrdecr, 'decr' );
 	
 	// Deletes the keys from the servers
-	memcached.del = function( key, callback ){
+	memcached.del = function del( key, callback ){
 		this.command({
 			key: key, callback: callback,
 			
@@ -610,7 +610,7 @@ Client.config = {
 	
 	
 	// Small wrapper that handle single keyword commands such as FLUSH ALL, VERSION and STAT
-	private.singles = function( type, callback ){
+	private.singles = function singles( type, callback ){
 		var memcached = this, responses = [], errors = [], calls,
 			handle = function( err, results ){
 				if( err ) errors.push( err );
@@ -643,7 +643,7 @@ Client.config = {
 	
 	// You need to use the items dump to get the correct server and slab settings
 	// see simple_cachedump.js for an example
-	memcached.cachedump = function( server, slabid, number, callback ){
+	memcached.cachedump = function cachedump( server, slabid, number, callback ){
 		this.command({
 				callback: callback,
 				number: number,
