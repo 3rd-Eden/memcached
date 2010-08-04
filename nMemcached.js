@@ -8,8 +8,6 @@ var HashRing 	 = require('./lib/hashring').HashRing,
 	Compression	 = require('./lib/gzip'),
 	Manager		 = Connection.Manager,
 	IssueLog	 = Connection.IssueLog;
-	
-exports = Client;
 
 // The constructor
 function Client( args, options ){
@@ -553,7 +551,7 @@ Client.config = {
 		
 		if( value.length > this.compressionThreshold ){
 			flag = flag == FLAG_JSON ? FLAG_JCOMPRESSION : flag == FLAG_BINARY ? FLAG_BCOMPRESSION : FLAG_COMPRESSION;
-			value = Compression.Deflate( process );
+			Compression.deflate( value, process );
 		} else {
 			process( false, value );
 		}
@@ -660,3 +658,5 @@ Client.config = {
 	};
 	
 })( Client );
+
+module.exports = Client;
