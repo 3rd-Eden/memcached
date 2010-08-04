@@ -262,7 +262,7 @@ Client.config = {
 								
 								case FLAG_BINARY:
 									tmp = new Buffer( dataSet.length );
-									tmp.write( dataSet, 0, 'ascii' );
+									tmp.write( dataSet, 0, 'binary' );
 									dataSet = tmp;
 									break;
 							}
@@ -366,7 +366,7 @@ Client.config = {
 	// When working with large chunks of responses, node chunks it in to peices. So we might have
 	// half responses. So we are going to buffer up the buffer and user our buffered buffer to query
 	// against. Also when you execute allot of .writes to the same stream, node will combine the responses
-	// in to one response stream. 
+	// in to one response stream.	
 	private.buffer = function BufferBuffer( S, BufferStream ){
 		var chunks = BufferStream.toString().split( LINEBREAK );
 		this.rawDataReceived( S, S.responseBuffer = S.responseBuffer.concat( chunks ) );
@@ -401,7 +401,7 @@ Client.config = {
 					if( private.bufferedCommands.test( bufferChunks[0] ) )
 						break;
 						
-					dataSet += ( dataSet.length > 0 ? LINEBREAK : '' ) + bufferChunks.shift();
+					dataSet += bufferChunks.shift();
 				};
 				
 				resultSet = private.parsers[ tokenSet[0] ].call( S, tokenSet, dataSet || token, err, queue, this );
@@ -541,7 +541,7 @@ Client.config = {
 		
 		if( Buffer.isBuffer( value ) ){
 			flag = FLAG_BINARY;
-			value = value.toString( 'ascii' );
+			value = value.toString( 'binary' );
 		} else if( typeof value !== 'string' ){
 			flag = FLAG_JSON;
 			value = JSON.stringify( value );
