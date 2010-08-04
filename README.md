@@ -83,6 +83,7 @@ If you wish to configure the options globally:
 
 ### Private methods
 The following methods are intended for private usage:
+
 ---------------------------------------
 #### .connect
 Fetches or generates a connection for the given server. The supplied callback function will receive a reference to the connection as argument.
