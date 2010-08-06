@@ -99,7 +99,8 @@ Client.config = {
 			S.setTimeout( memcached.timeout );
 			S.setNoDelay(true);
 			S.metaData = [];
-			S.responseBuffer = [];
+			S.responseBuffer = "";
+			S.bufferArray = [];
 			S.server = server;
 			S.tokens = serverTokens;
 			
@@ -266,7 +267,7 @@ Client.config = {
 									dataSet = tmp;
 									break;
 							}
-							
+								
 							// Add to queue as multiple get key key key key key returns multiple values
 							queue.push( dataSet );
 							return [ BUFFER, false ] 
@@ -366,21 +367,30 @@ Client.config = {
 	// When working with large chunks of responses, node chunks it in to peices. So we might have
 	// half responses. So we are going to buffer up the buffer and user our buffered buffer to query
 	// against. Also when you execute allot of .writes to the same stream, node will combine the responses
-	// in to one response stream.	
+	// in to one response stream. With no indication where it had cut the data. So it can be it cuts inside the value response,
+	// or even right in the middle of a linebreak, so we need to make sure, the last peice in the buffer is a LINEBREAK
+	// because that is all what is sure about the Memcached Protocol, all responds end with them.
 	private.buffer = function BufferBuffer( S, BufferStream ){
-		var chunks = BufferStream.toString().split( LINEBREAK );
-		this.rawDataReceived( S, S.responseBuffer = S.responseBuffer.concat( chunks ) );
+		S.responseBuffer += BufferStream;
+		
+		// only call transform the data once we are sure, 100% sure, that we valid response ending
+		if( S.responseBuffer.substr( S.responseBuffer.length - 2 ) === LINEBREAK ){
+			var chunks = S.responseBuffer.split( LINEBREAK );
+			
+			S.responseBuffer = ""; // clear!
+			this.rawDataReceived( S, S.bufferArray = S.bufferArray.concat( chunks ) );
+		} 
 	};
 	
 	// The actual parsers function that scan over the responseBuffer in search of Memcached response
 	// identifiers. Once we have found one, we will send it to the dedicated parsers that will transform
 	// the data in a human readable format, deciding if we should queue it up, or send it to a callback fn. 
-	memcached.rawDataReceived = function rawDataReceived( S, bufferChunks ){
-		var queue = [],	token, tokenSet, command, dataSet = '', resultSet, metaData, err = [], tmp;
+	memcached.rawDataReceived = function rawDataReceived( S ){
+		var queue = [],	token, tokenSet, dataSet = '', resultSet, metaData, err = [], tmp;
 		
-		while( bufferChunks.length && private.allCommands.test( bufferChunks[0] ) ){
+		while( S.bufferArray.length && private.allCommands.test( S.bufferArray[0] ) ){
 
-			token = bufferChunks.shift();
+			token = S.bufferArray.shift();
 			tokenSet = token.split( ' ' );
 			
 			// special case for digit only's these are responses from INCR and DECR
@@ -390,20 +400,21 @@ Client.config = {
 			// special case for value, it's required that it has a second response!
 			// add the token back, and wait for the next response, we might be handling a big 
 			// ass response here. 
-			if( tokenSet[0] == 'VALUE' && bufferChunks.indexOf( 'END') == -1 )
-				return bufferChunks.unshift( token );
+			if( tokenSet[0] == 'VALUE' && S.bufferArray.indexOf( 'END' ) == -1 ){
+				return S.bufferArray.unshift( token );
+			}
 			
 			// check for dedicated parser
 			if( private.parsers[ tokenSet[0] ] ){
 				
 				// fetch the response content
-				while( bufferChunks.length ){
-					if( private.bufferedCommands.test( bufferChunks[0] ) )
+				while( S.bufferArray.length ){
+					if( private.bufferedCommands.test( S.bufferArray[0] ) )
 						break;
 						
-					dataSet += bufferChunks.shift();
+					dataSet += S.bufferArray.shift();
 				};
-				
+								
 				resultSet = private.parsers[ tokenSet[0] ].call( S, tokenSet, dataSet || token, err, queue, this );
 				
 				// check how we need to handle the resultSet response
@@ -448,7 +459,7 @@ Client.config = {
 				metaData = S.metaData.shift();
 				if( metaData && metaData.callback ){
 					metaData.execution = +new Date - metaData.start;
-					metaData.callback.call( metaData, 'Unknown response from the memcached server: ' + token, false );
+					metaData.callback.call( metaData, 'Unknown response from the memcached server: "' + token + '"', false );
 				}
 			}
 			
@@ -456,12 +467,11 @@ Client.config = {
 			dataSet = ''
 			tokenSet = undefined;
 			metaData = undefined;
-			command = undefined;
 			
 			// check if we need to remove an empty item from the array, as splitting on /r/n might cause an empty
 			// item at the end.. 
-			if( bufferChunks[0] == '' )
-				bufferChunks.shift();
+			if( S.bufferArray[0] === '' )
+				S.bufferArray.shift();
 		};
 	};
 	
