@@ -57,6 +57,7 @@ Client.config = {
 	retries: 5,					 // amount of retries before server is dead
 	retry: 30000,				 // timeout between retries, all call will be marked as cache miss
 	remove: false,				 // remove server if dead if false, we will attempt to reconnect
+	redundancy: false,			 // allows you do re-distribute the keys over a x amount of servers
 
 	compressionThreshold: 10240, // only than will compression be usefull
 	keyCompression: true		 // compress keys if they are to large (md5)
@@ -65,6 +66,7 @@ Client.config = {
 // There some functions we don't want users to touch so we scope them
 (function( nMemcached ){
 	const LINEBREAK				= '\r\n',
+		  NOREPLY				= ' noreply',
 		  FLUSH					= 1E3,
 		  BUFFER				= 1E2,
 		  CONTINUE				= 1E1,
@@ -148,10 +150,17 @@ Client.config = {
 	
 	// Executes the command on the net.Stream, if no server is supplied it will use the query.key to get 
 	// the server from the HashRing
-	memcached.command = function command( query, server ){
+	memcached.command = function command( queryCompiler, server ){
+		
+		// generate a regular query, 
+		var query = queryCompiler(),
+			redundancy = this.redundancy && this.redundancy < this.servers.length,
+			queryRedundancy = query.redundancyEnabled,
+			memcached = this;
+		
 		if( query.validation && !Utils.validateArg( query, this ))  return;
 				
-		server = server || this.HashRing.getNode( query.key );
+		server = server || redundancy && queryRedundancy ? ( redundancy = this.HashRing.createRange( query.key, ( this.redundancy + 1 ), true )).shift() : this.HashRing.getNode( query.key );
 		
 		if( server in this.issues && this.issues[ server ].failed )
 			return query.callback && query.callback( false, false );
@@ -167,6 +176,24 @@ Client.config = {
 			S.metaData.push( query );
 			S.write( query.command + LINEBREAK );
 		});
+		
+		// if we have redundancy enabled and the query is used for redundancy, than we are going loop over
+		// the servers, check if we can reach them, and connect to the correct net connection.
+		// because all redundancy querys are executed with "no reply" we do not need to store the callback
+		// as there will be no value to parse. 
+		if( redundancy && queryRedundancy ){
+			queryRedundancy = queryCompiler( queryRedundancy );
+			
+			redundancy.forEach(function( server ){
+				if( server in memcached.issues && memcached.issues[ server ].failed )
+					return;
+				
+				memcached.connect( server, function( error, S ){
+					if( !S || error || S.readyState !== 'open' ) return
+					S.write( queryRedundancy.command + LINEBREAK );
+				});
+			})
+		}
 	};
 	
 	// Logs all connection issues, and handles them off. Marking all requests as cache misses.
@@ -490,7 +517,7 @@ Client.config = {
 		if( Array.isArray( key ) )
 			return this.getMulti.apply( this, arguments );
 			
-		this.command({
+		this.command(function getCommand( noreply ){ return {
 			key: key, callback: callback,
 			
 			// validate the arguments
@@ -499,7 +526,7 @@ Client.config = {
 			// used for the query
 			type: 'get',
 			command: 'get ' + key
-		});
+		}});
 	};
 	
 	// Handles get's with multiple keys
@@ -514,11 +541,11 @@ Client.config = {
 		this.multi( keys, function( server, keys, index, totals ){
 			if( !calls ) calls = totals;
 			
-			memcached.command({
+			memcached.command(function getMultiCommand( noreply ){ return {
 					callback: handle,
 					type: 'get',
 					command: 'get ' + keys.join( ' ' )
-				},
+				}},
 				server
 			);
 		});
@@ -538,15 +565,19 @@ Client.config = {
 				if( value.length > memcached.maxValue )
 					return private.errorResponse( 'The length of the value is greater-than ' + memcached.compressionThreshold, callback );
 						
-				memcached.command({
+				memcached.command(function settersCommand( noreply ){ return {
 					key: key, callback: callback, lifetime: lifetime, value: value, cas: cas,
 					
 					// validate the arguments
 					validate: validate,
 					
 					type: type,
-					command: [ type, key, flag, lifetime, Buffer.byteLength( value ) ].join( ' ' ) + ( cas ? cas : '' ) + LINEBREAK + value
-				})
+					redundancyEnabled: true,
+					command: [ type, key, flag, lifetime, Buffer.byteLength( value ) ].join( ' ' ) + 
+							 ( cas ? cas : '' ) + 
+							 ( noreply ? NOREPLY : '' ) + 
+							 LINEBREAK + value
+				}})
 			};
 		
 		if( Buffer.isBuffer( value ) ){
@@ -586,7 +617,7 @@ Client.config = {
 	
 	// Small handler for incr and decr's
 	private.incrdecr = function incrdecr( type, key, value, callback ){
-		this.command({
+		this.command(function incredecrCommand( noreply ){ return {
 			key: key, callback: callback, value: value,
 			
 			// validate the arguments
@@ -594,8 +625,10 @@ Client.config = {
 			
 			// used for the query
 			type: type,
-			command: [ type, key, value ].join( ' ' )
-		});
+			redundancyEnabled: true,
+			command: [ type, key, value ].join( ' ' ) +
+					 ( noreply ? NOREPLY : '' )
+		}});
 	};
 	
 	// Curry the function and so we can tell the type our private incrdecr
@@ -604,7 +637,7 @@ Client.config = {
 	
 	// Deletes the keys from the servers
 	memcached.del = function del( key, callback ){
-		this.command({
+		this.command(function deleteCommand( noreply ){ return {
 			key: key, callback: callback,
 			
 			// validate the arguments
@@ -612,8 +645,10 @@ Client.config = {
 			
 			// used for the query
 			type: 'delete',
-			command: 'delete ' + key
-		});
+			redundancyEnabled: true,
+			command: 'delete ' + key + 
+					 ( noreply ? NOREPLY : '' )
+		}});
 	};
 	
 	
@@ -631,11 +666,11 @@ Client.config = {
 		this.multi( false, function( server, keys, index, totals ){
 			if( !calls ) calls = totals;
 			
-			memcached.command({
+			memcached.command(function singlesCommand( noreply ){ return {
 					callback: handle,
 					type: type,
 					command: type
-				},
+				}},
 				server
 			);
 		});
@@ -652,7 +687,7 @@ Client.config = {
 	// You need to use the items dump to get the correct server and slab settings
 	// see simple_cachedump.js for an example
 	memcached.cachedump = function cachedump( server, slabid, number, callback ){
-		this.command({
+		this.command(function cachedumpCommand( noreply ){ return {
 				callback: callback,
 				number: number,
 				slabid: slabid,
@@ -662,7 +697,7 @@ Client.config = {
 				
 				type: 'stats cachedump',
 				command: 'stats cachedump ' + slabid + ' ' + number
-			},
+			}},
 			server
 		);
 	};
