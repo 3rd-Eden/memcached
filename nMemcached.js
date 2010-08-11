@@ -133,10 +133,11 @@ Client.config = {
 		if( keys ){
 			keys.forEach(function( key ){
 				var server = memcached.HashRing.getNode( key );
-				if( map[ server ] )
+				if( map[ server ] ){
 					map[ server ].push( key );
-				else
+				} else {
 					map[ server ] = [ key ];
+				}
 			});
 			servers = Object.keys( map );
 		} else {
@@ -144,8 +145,9 @@ Client.config = {
 		}
 		
 		i = servers.length;
-		while( i-- )
+		while( i-- ){
 			callback.call( this, servers[i], map[ servers[i] ], i, servers.length );
+		}
 	};
 	
 	// Executes the command on the net.Stream, if no server is supplied it will use the query.key to get 
@@ -159,8 +161,8 @@ Client.config = {
 			memcached = this;
 		
 		if( query.validation && !Utils.validateArg( query, this ))  return;
-				
-		server = server || redundancy && queryRedundancy ? ( redundancy = this.HashRing.createRange( query.key, ( this.redundancy + 1 ), true )).shift() : this.HashRing.getNode( query.key );
+						
+		server = server ? server : redundancy && queryRedundancy ? ( redundancy = this.HashRing.createRange( query.key, ( this.redundancy + 1 ), true )).shift() : this.HashRing.getNode( query.key );
 		
 		if( server in this.issues && this.issues[ server ].failed )
 			return query.callback && query.callback( false, false );
@@ -266,12 +268,12 @@ Client.config = {
 		'DELETED': 		function( tokens, dataSet ){ return [ CONTINUE, true ] },
 		'OK': 			function( tokens, dataSet ){ return [ CONTINUE, true ] },
 		'EXISTS': 		function( tokens, dataSet ){ return [ CONTINUE, true ] },
-		'END': 			function( tokens, dataSet, err, queue ){ if( !queue.length) queue.push( false ); return [ FLUSH, true ] },
+		'END': 			function( tokens, dataSet, err, queue ){ if( !queue.length ) queue.push( false ); return [ FLUSH, true ] },
 		
 		// value parsing:
 		'VALUE': 		function( tokens, dataSet, err, queue ){
-							var key = tokens[1], flag = +tokens[2], expire = tokens[3],
-								tmp;
+							var key = tokens[1],  flag = +tokens[2], expire = tokens[3], tmp,
+								multi = this.metaData[0] && this.metaData[0].multi ? {} : false;
 							
 							// check for compression
 							if( flag >= FLAG_COMPRESSION ){
@@ -294,9 +296,15 @@ Client.config = {
 									dataSet = tmp;
 									break;
 							}
+							
 								
 							// Add to queue as multiple get key key key key key returns multiple values
-							queue.push( dataSet );
+							if( !multi ){
+								queue.push( response[ key ] = dataSet);
+							} else {
+								multi[ key ] = dataSet;
+								queue.push( multi );
+							}
 							return [ BUFFER, false ] 
 						},
 		'INCRDECR':		function( tokens ){ return [ CONTINUE, +tokens[1] ] },
@@ -531,20 +539,25 @@ Client.config = {
 	
 	// Handles get's with multiple keys
 	memcached.getMulti = function getMulti( keys, callback ){
-		var memcached = this, responses = [], errors = [], calls,
+		var memcached = this, responses = {}, errors = [], calls,
 			handle = function( err, results ){
 				if( err ) errors.push( err );
-				if( results ) responses = responses.concat( results );
-				if( !--calls ) callback( errors, responses );
+				// add all responses to the array
+				( Array.isArray( results ) ? results : [ results ] ).forEach(function( value ){ Utils.merge( responses, value ) });
+				
+				if( !--calls ) callback( errors.length ? errors : false, responses );
 			};
 		
-		this.multi( keys, function( server, keys, index, totals ){
+		this.multi( keys, function( server, key, index, totals ){
 			if( !calls ) calls = totals;
+			
 			
 			memcached.command(function getMultiCommand( noreply ){ return {
 					callback: handle,
+					
+					multi:true,
 					type: 'get',
-					command: 'get ' + keys.join( ' ' )
+					command: 'get ' + key.join( ' ' )
 				}},
 				server
 			);
