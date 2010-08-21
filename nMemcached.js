@@ -300,7 +300,7 @@ Client.config = {
 								
 							// Add to queue as multiple get key key key key key returns multiple values
 							if( !multi ){
-								queue.push( response[ key ] = dataSet);
+								queue.push( dataSet);
 							} else {
 								multi[ key ] = dataSet;
 								queue.push( multi );
