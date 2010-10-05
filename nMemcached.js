@@ -48,7 +48,7 @@ Client.config = {
 	maxExpiration: 2592000,		 // max expiration duration allowed by Memcached
 	maxValue: 1048576,			 // max length of value allowed by Memcached
 	
-	algorithm: 'md5',			 // hashing algorithm that is used for key mapping  
+	algorithm: 'crc32',			 // hashing algorithm that is used for key mapping  
 
 	poolSize: 10,				 // maximal parallel connections
 	reconnect: 18000000,		 // if dead, attempt reconnect each xx ms
