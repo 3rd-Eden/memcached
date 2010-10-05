@@ -267,8 +267,8 @@ Client.config = {
 		
 		// value parsing:
 		'VALUE': 		function( tokens, dataSet, err, queue ){
-							var key = tokens[1],  flag = +tokens[2], expire = tokens[3], tmp,
-								multi = this.metaData[0] && this.metaData[0].multi ? {} : false;
+							var key = tokens[1],  flag = +tokens[2], expire = tokens[3], cas = tokens[4],
+								tmp, multi = this.metaData[0] && this.metaData[0].multi || cas ? {} : false;
 							
 							switch( flag ){
 								case FLAG_JSON:
@@ -288,6 +288,7 @@ Client.config = {
 								queue.push( dataSet);
 							} else {
 								multi[ key ] = dataSet;
+								if( cas ) multi.cas = cas;
 								queue.push( multi );
 							}
 							return [ BUFFER, false ] 
