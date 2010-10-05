@@ -5,7 +5,6 @@ var EventEmitter = require('events').EventEmitter,
 var HashRing 	 = require('./lib/hashring').HashRing,
 	Connection	 = require('./lib/connection'),
 	Utils		 = require('./lib/utils'),
-	Compression	 = require('./lib/gzip'),
 	Manager		 = Connection.Manager,
 	IssueLog	 = Connection.IssueLog;
 
@@ -59,7 +58,6 @@ Client.config = {
 	remove: false,				 // remove server if dead if false, we will attempt to reconnect
 	redundancy: false,			 // allows you do re-distribute the keys over a x amount of servers
 
-	compressionThreshold: 10240, // only than will compression be usefull
 	keyCompression: true		 // compress keys if they are to large (md5)
 };
 
@@ -71,10 +69,7 @@ Client.config = {
 		  BUFFER				= 1E2,
 		  CONTINUE				= 1E1,
 		  FLAG_JSON 			= 1<<1,
-		  FLAG_BINARY			= 2<<1,
-		  FLAG_COMPRESSION 		= 3<<1,
-		  FLAG_JCOMPRESSION 	= 4<<1,
-		  FLAG_BCOMPRESSION		= 5<<1;
+		  FLAG_BINARY			= 2<<1;
 
 	var memcached = nMemcached.prototype = new EventEmitter,
 		private = {},
@@ -274,16 +269,6 @@ Client.config = {
 		'VALUE': 		function( tokens, dataSet, err, queue ){
 							var key = tokens[1],  flag = +tokens[2], expire = tokens[3], tmp,
 								multi = this.metaData[0] && this.metaData[0].multi ? {} : false;
-							
-							// check for compression
-							if( flag >= FLAG_COMPRESSION ){
-								switch( flag ){
-									case FLAG_BCOMPRESSION: flag = FLAG_BINARY; break;
-									case FLAG_JCOMPRESSION:	flag = FLAG_JSON; break;
-								}
-								
-								dataSet = Compression.Inflate( dataSet );
-							}
 							
 							switch( flag ){
 								case FLAG_JSON:
@@ -519,9 +504,7 @@ Client.config = {
 	};
 	
 	// This is where the actual Memcached API layer begins:
-	
-	// Get, gets all the same, no difference
-	memcached.gets = memcached.get = function get( key, callback ){
+	memcached.get = function get( key, callback ){
 		if( Array.isArray( key ) )
 			return this.getMulti.apply( this, arguments );
 			
@@ -534,6 +517,21 @@ Client.config = {
 			// used for the query
 			type: 'get',
 			command: 'get ' + key
+		}});
+	};
+	
+	// the difference between get and gets is that gets, also returns a cas value
+	// and gets doesnt support multigets atm
+	memcached.gets = function get( key, callback ){
+		this.command(function getCommand( noreply ){ return {
+			key: key, callback: callback,
+			
+			// validate the arguments
+			validate: [[ 'key', String ], [ 'callback', Function ]],
+			
+			// used for the query
+			type: 'gets',
+			command: 'gets ' + key
 		}});
 	};
 	
@@ -570,28 +568,7 @@ Client.config = {
 	// memcached server is smart enough to ignore those. 
 	private.setters = function setters( type, validate, key, value, lifetime, callback, cas ){
 		var flag = 0,
-			memcached = this,
-			process = function( err, value ){
-				if( err )
-					return private.errorResponse( err, callback );
-					
-				if( value.length > memcached.maxValue )
-					return private.errorResponse( 'The length of the value is greater-than ' + memcached.compressionThreshold, callback );
-						
-				memcached.command(function settersCommand( noreply ){ return {
-					key: key, callback: callback, lifetime: lifetime, value: value, cas: cas,
-					
-					// validate the arguments
-					validate: validate,
-					
-					type: type,
-					redundancyEnabled: true,
-					command: [ type, key, flag, lifetime, Buffer.byteLength( value ) ].join( ' ' ) + 
-							 ( cas ? cas : '' ) + 
-							 ( noreply ? NOREPLY : '' ) + 
-							 LINEBREAK + value
-				}})
-			};
+			memcached = this;
 		
 		if( Buffer.isBuffer( value ) ){
 			flag = FLAG_BINARY;
@@ -603,18 +580,28 @@ Client.config = {
 			value = value.toString();	
 		}
 		
-		if( value.length > this.compressionThreshold ){
-			flag = flag == FLAG_JSON ? FLAG_JCOMPRESSION : flag == FLAG_BINARY ? FLAG_BCOMPRESSION : FLAG_COMPRESSION;
-			Compression.deflate( value, process );
-		} else {
-			process( false, value );
-		}
+		if( value.length > memcached.maxValue )
+			return private.errorResponse( 'The length of the value is greater-than ' + memcached.maxValue, callback );
+				
+		memcached.command(function settersCommand( noreply ){ return {
+			key: key, callback: callback, lifetime: lifetime, value: value, cas: cas,
+			
+			// validate the arguments
+			validate: validate,
+			
+			type: type,
+			redundancyEnabled: true,
+			command: [ type, key, flag, lifetime, Buffer.byteLength( value ) ].join( ' ' ) + 
+					 ( cas ? cas : '' ) + 
+					 ( noreply ? NOREPLY : '' ) + 
+					 LINEBREAK + value
+		}});
 	};
 	
 	// Curry the function and so we can tell the type our private set function
 	memcached.set = Utils.curry( false, private.setters, 'set', [[ 'key', String ], [ 'lifetime', Number ], [ 'value', String ], [ 'callback', Function ]] );
 	memcached.replace = Utils.curry( false, private.setters, 'replace', [[ 'key', String ], [ 'lifetime', Number ], [ 'value', String ], [ 'callback', Function ]] );
-	memcached.add = Utils.curry( false, private.setters, 'replace', [[ 'key', String ], [ 'lifetime', Number ], [ 'value', String ], [ 'callback', Function ]] );
+	memcached.add = Utils.curry( false, private.setters, 'add', [[ 'key', String ], [ 'lifetime', Number ], [ 'value', String ], [ 'callback', Function ]] );
 	
 	memcached.cas = function checkandset( key, value, cas, lifetime, callback ){
 		private.setters.call( this, 'cas', [[ 'key', String ], [ 'lifetime', Number ], [ 'value', String ], [ 'callback', Function ]], key, value, lifetime, callback, cas );
