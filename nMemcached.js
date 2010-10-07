@@ -262,7 +262,7 @@ Client.config = {
 		'STORED': 		function( tokens, dataSet ){ return [ CONTINUE, true ] },
 		'DELETED': 		function( tokens, dataSet ){ return [ CONTINUE, true ] },
 		'OK': 			function( tokens, dataSet ){ return [ CONTINUE, true ] },
-		'EXISTS': 		function( tokens, dataSet ){ return [ CONTINUE, true ] },
+		'EXISTS': 		function( tokens, dataSet ){ return [ CONTINUE, false ] },
 		'END': 			function( tokens, dataSet, err, queue ){ if( !queue.length ) queue.push( false ); return [ FLUSH, true ] },
 		
 		// value parsing:
@@ -593,7 +593,7 @@ Client.config = {
 			type: type,
 			redundancyEnabled: true,
 			command: [ type, key, flag, lifetime, Buffer.byteLength( value ) ].join( ' ' ) + 
-					 ( cas ? cas : '' ) + 
+					 ( cas ? ' ' + cas : '' ) + 
 					 ( noreply ? NOREPLY : '' ) + 
 					 LINEBREAK + value
 		}});
