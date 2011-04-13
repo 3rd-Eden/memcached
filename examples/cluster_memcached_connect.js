@@ -1,5 +1,5 @@
 var sys = require( 'sys' ),
-	nMemcached = require( '../nMemcached' ).client,
+	nMemcached = require( '../' ),
 	assert = require('assert'),
 	memcached;
 

@@ -1,4 +1,4 @@
-var	nMemcached = require( '../nMemcached' ),
+var	nMemcached = require( '../' ),
 	fs = require('fs'),
 	memcached;
 

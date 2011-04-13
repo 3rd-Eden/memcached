@@ -1,4 +1,4 @@
-var	nMemcached = require( '../nMemcached' ),
+var	nMemcached = require( '../' ),
 	memcached;
 	
 // connect to a unknown server
