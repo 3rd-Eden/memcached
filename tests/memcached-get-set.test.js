@@ -7,7 +7,7 @@ var assert = require('assert')
   , fs = require('fs')
   , common = require('./common')
   , Memcached = require('../');
-
+  
 global.testnumbers = global.testnumbers || 0;
 
 /**
@@ -158,7 +158,7 @@ module.exports = {
 /**
  * Bufers are commonly used for binary transports So we need to make sure
  * we support them propperly
- * /
+ */
 , "set and get buffers": function(){
     var memcached = new Memcached(common.servers.single)
       , message = fs.readFileSync(__dirname + '/fixtures/hotchicks.jpg')
@@ -169,11 +169,7 @@ module.exports = {
       ok.should.be.true;
       
       memcached.get("test:" + testnr, function(error, answer){
-        assert.ok(!error);
-        
-        assert.ok(answer.length == message.length);
-        assert.ok(Buffer.byteLength(answer, 'ascii') == Buffer.byteLength(message, 'ascii'));
-        assert.ok(answer.toString() === message.toString())
+        assert.ok(answer.toString('binary') === answer.toString('binary'));
         memcached.end(); // close connections
       });
     });
