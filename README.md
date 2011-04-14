@@ -1,24 +1,24 @@
-#nMemcached
+#Memcached
 
-nMemcached is a fully featured Memcached client for Node.js. nMemcached is build with scaling, high availability and exceptional performance in mind. We use consistent hashing to store the data across different nodes. Consistent hashing is a scheme that provides a hash table functionality in a way that adding or removing a server node does not significantly change the mapping of the keys to server nodes. The algorithm that is used for consistent hashing is the same as `libketama`.
+`memcached` is a fully featured Memcached client for Node.js. `memcached` is build with scaling, high availability and exceptional performance in mind. We use consistent hashing to store the data across different nodes. Consistent hashing is a scheme that provides a hash table functionality in a way that adding or removing a server node does not significantly change the mapping of the keys to server nodes. The algorithm that is used for consistent hashing is the same as `libketama`.
 
-There are different ways to handle errors for example, when a server becomes unavailable you can configure the client to see all requests to that server as cache misses until it goes up again. It's also possible to automatically remove the affected server from the consistent hashing algorithm or provide nMemcached with a failover server that can take the place of the unresponsive server.
+There are different ways to handle errors for example, when a server becomes unavailable you can configure the client to see all requests to that server as cache misses until it goes up again. It's also possible to automatically remove the affected server from the consistent hashing algorithm or provide `memcached` with a failover server that can take the place of the unresponsive server.
 
-When these issues occur the nMemcached client will emit different events where you can subscribe to containing detailed information about the issues.
+When these issues occur the `memcached` client will emit different events where you can subscribe to containing detailed information about the issues.
 
-The client is configurable on different levels. There's a global configuration that you update so all you Memcached clusters will use the same failure configuration for example, but it's also possible to overwrite these changes per nMemcached instance.
+The client is configurable on different levels. There's a global configuration that you update so all you Memcached clusters will use the same failure configuration for example, but it's also possible to overwrite these changes per `memcached` instance.
 
-	**Project status** Working, but untested. There are still a couple of internal cavecats that needs to be overcome. 
+	**Project status** Working, but untested. There are still a couple of internal caveats that needs to be overcome. 
 	At this point compression and sending `Buffer` objects as values are not supported. The project is getting closer to
-	it's first alpha release. So at this point, I would not recommonend for production servers **yet**. Feel free to contribute
+	it's first alpha release. So at this point, I would not recommend for production servers **yet**. Feel free to contribute
 	and apply patches where needed.
 
 ## Setting up the client
 
-The constructor of the nMemcached client take 2 different arguments `server locations` and `options`. Syntax:
+The constructor of the `memcached` client take 2 different arguments `server locations` and `options`. Syntax:
 
-	var nMemcached = require('nMemcached');
-	var memcached = new nMemcached(Server locations, options);
+	var Memcached = require('memcached');
+	var memcached = new Memcached(Server locations, options);
 
 ### Server locations
 The server locations is designed to work with different formats. These formats are all internally parsed to the correct format so our consistent hashing scheme can work with it. You can either use:
@@ -44,9 +44,9 @@ The server locations is designed to work with different formats. These formats a
 
 If you would implement one of the above formats, your constructor would something like this:
 
-	var memcache = new nMemcached({ '192.168.0.102:11212': 1, '192.168.0.103:11212': 2, '192.168.0.104:11212': 1 });
-	var memcache = new nMemcached([ '192.168.0.102:11212', '192.168.0.103:11212', '192.168.0.104:11212' ]);
-	var memcache = new nMemcached('192.168.0.102:11212');
+	var memcached = new Memcached({ '192.168.0.102:11212': 1, '192.168.0.103:11212': 2, '192.168.0.104:11212': 1 });
+	var memcached = new Memcached([ '192.168.0.102:11212', '192.168.0.103:11212', '192.168.0.104:11212' ]);
+	var memcached = new Memcached('192.168.0.102:11212');
 
 ### Options
 
@@ -56,7 +56,7 @@ There 2 kinds of options that can be configured. A global configuration that wil
 * `maxExpiration`: *2592000*, the max expiration of keys by the Memcached server in milliseconds.
 * `maxValue`: *1048576*, the max size of a value that is allowed by the Memcached server.
 * `poolSize`: *10*, the maximum connections we can allocate in our connection pool.
-* `algorithm`: *md5*, the hashing algorithm that should be used to generate the hashRing values.
+* `algorithm`: *crc32*, the hashing algorithm that should be used to generate the hashRing values.
 * `reconnect`: *18000000*, when the server is marked as dead we will attempt to reconnect every x milliseconds.
 * `timeout`: *5000*, after x ms the server should send a timeout if we can't connect. This will also be used close the connection if we are idle.
 * `retries`: *5*, amount of tries before we mark the server as dead.
@@ -68,13 +68,13 @@ There 2 kinds of options that can be configured. A global configuration that wil
 
 Example usage:
 
-	var memcache = new nMemcached('localhost:11212', {retries:10,retry:10000,remove:true,failOverServers:['192.168.0.103:11212']});
+	var memcached = new Memcached('localhost:11212', {retries:10,retry:10000,remove:true,failOverServers:['192.168.0.103:11212']});
 
 If you wish to configure the options globally:
 
-	var nMemcached = require( 'nMemcached' ).Client;
+	var Memcached = require( 'memcached' ).Client;
 	// all global configurations should be applied to the .config object of the Client.
-	nMemcached.config.poolSize = 25;
+	Memcached.config.poolSize = 25;
 
 ## API
 
@@ -126,7 +126,7 @@ Example
 ---------------------------------------
 #### .command
 
-This is the core functionality of the nMemcached client. All public API's are routed through this function. It takes care of the argument validations
+This is the core functionality of the `memcached` client. All public API's are routed through this function. It takes care of the argument validations
 Server retrieval ( If the server argument isn't specified ). After all data ready a connection is asked for the private `connect` method and the command
 is written to the Memcached server.
 
@@ -207,7 +207,7 @@ If the server is dead these details will be added:
 
 ### Events
 
-There are `5` different events that the nMemcached client emits when connection issues occur. 
+There are `5` different events that the `memcached` client emits when connection issues occur. 
 
 * `issue`: a issue occurred on one a server, we are going to attempt a retry next.
 * `failure`: a server has been marked as failure or dead.
@@ -217,6 +217,6 @@ There are `5` different events that the nMemcached client emits when connection 
 
 Example implementations:
 
-	var memcached = new nMemcached([ '192.168.0.102:11212', '192.168.0.103:11212' ]);
+	var memcached = new Memcached([ '192.168.0.102:11212', '192.168.0.103:11212' ]);
 	memcached.on('failure', function( details ){ sys.error( "Server " + details.server + "went down due to: " + details.messages.join( '' ) ) });
 	memcached.on('reconnecting', function( details ){ sys.debug( "Total downtime caused by server " + details.server + " :" + details.totalDownTime + "ms")})
