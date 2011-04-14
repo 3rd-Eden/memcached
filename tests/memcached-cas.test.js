@@ -59,9 +59,8 @@ module.exports = {
         
         // generate new message for the cas update
         message = common.alphabet(256);
-        memcached.cas("test:" + testnr, message, answer.cas, function(error, answer){
+        memcached.cas("test:" + testnr, message, 1000, answer.cas, function(error, answer){
           assert.ok(!error);
-          assert.ok(!!answer.cas);
           
           memcached.end(); // close connections
         });

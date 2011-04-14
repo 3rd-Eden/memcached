@@ -83,7 +83,7 @@ module.exports = {
       memcached.get("test:" + testnr, function(error, answer){
         assert.ok(!error);
         
-        assert.ok(typeof answer === 'number');
+        assert.ok(typeof answer === 'string');
         answer.should.eql(answer);
         
         memcached.end(); // close connections
@@ -113,7 +113,7 @@ module.exports = {
         assert.ok(!error);
         
         assert.ok(!Array.isArray(answer) && typeof answer == 'object');
-        answer.should.eql(message);
+        assert.ok(JSON.stringify(message) == JSON.stringify(answer));
         memcached.end(); // close connections
       });
     });
@@ -149,7 +149,7 @@ module.exports = {
         assert.ok(!error);
         
         assert.ok(Array.isArray(answer));
-        answer.should.eql(message);
+        assert.ok(JSON.stringify(answer) == JSON.stringify(message));
         memcached.end(); // close connections
       });
     });
@@ -158,7 +158,7 @@ module.exports = {
 /**
  * Bufers are commonly used for binary transports So we need to make sure
  * we support them propperly
- */
+ * /
 , "set and get buffers": function(){
     var memcached = new Memcached(common.servers.single)
       , message = fs.readFileSync(__dirname + '/fixtures/hotchicks.jpg')
@@ -200,7 +200,7 @@ module.exports = {
         memcached.end(); // close connections
       });
     });
-  },
+  }
 
 /**
  * A multi get on a single server is different than a multi server multi get
@@ -221,7 +221,7 @@ module.exports = {
         assert.ok(!error);
         ok.should.be.true;
         
-        memcached.get(["test1:" + testnr,"test2:" + testnr], function(error, answer){
+        memcached.get(["test1:" + testnr, "test2:" + testnr], function(error, answer){
           assert.ok(!error);
           
           assert.ok(typeof answer === 'object');
