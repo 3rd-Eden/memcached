@@ -8,11 +8,6 @@ When these issues occur the `memcached` client will emit different events where 
 
 The client is configurable on different levels. There's a global configuration that you update so all you Memcached clusters will use the same failure configuration for example, but it's also possible to overwrite these changes per `memcached` instance.
 
-	**Project status** Working, but untested. There are still a couple of internal caveats that needs to be overcome. 
-	At this point compression and sending `Buffer` objects as values are not supported. The project is getting closer to
-	it's first alpha release. So at this point, I would not recommend for production servers **yet**. Feel free to contribute
-	and apply patches where needed.
-
 ## Setting up the client
 
 The constructor of the `memcached` client take 2 different arguments `server locations` and `options`. Syntax:
