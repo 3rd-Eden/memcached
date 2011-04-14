@@ -58,7 +58,6 @@ There 2 kinds of options that can be configured. A global configuration that wil
 * `retry`: *30000*, timeout between each retry in x milliseconds.
 * `remove`: *false*, when the server is marked as dead you can remove it from the pool so all other will receive the keys instead.
 * `failOverServers`: *undefined*, the ability use these servers as failover when the dead server get's removed from the consistent hashing scheme. This must be an array of servers confirm the server_locations specification.
-* `compressionThreshold`: *10240*, minimum length of value before we start using compression for the value.
 * `keyCompression`: *true*, compress keys using md5 if they exceed the maxKeySize option.
 
 Example usage:
