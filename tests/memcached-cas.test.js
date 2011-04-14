@@ -59,10 +59,16 @@ module.exports = {
         
         // generate new message for the cas update
         message = common.alphabet(256);
-        memcached.cas("test:" + testnr, message, 1000, answer.cas, function(error, answer){
+        memcached.cas("test:" + testnr, message, answer.cas, 1000, function(error, answer){
           assert.ok(!error);
           
-          memcached.end(); // close connections
+          memcached.get("test:" + testnr, function(error, answer){
+            
+            assert.ok(!error);
+            answer.should.eql(message);
+            
+            memcached.end(); // close connections
+          })
         });
       });
     });

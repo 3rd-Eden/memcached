@@ -7,7 +7,7 @@ var assert = require('assert')
   , fs = require('fs')
   , common = require('./common')
   , Memcached = require('../');
-  
+
 global.testnumbers = global.testnumbers || 0;
 
 /**
@@ -169,6 +169,7 @@ module.exports = {
       ok.should.be.true;
       
       memcached.get("test:" + testnr, function(error, answer){
+        assert.ok(!error);
         assert.ok(answer.toString('binary') === answer.toString('binary'));
         memcached.end(); // close connections
       });
