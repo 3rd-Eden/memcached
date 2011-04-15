@@ -42,7 +42,7 @@ module.exports = {
   }
 
 /**
- * Create a successful cas update, so we are sure we send a cas request correctly
+ * Create a successful cas update, so we are sure we send a cas request correctly.
  */
 , "successful cas update" : function(){
     var memcached = new Memcached(common.servers.single)
@@ -76,7 +76,8 @@ module.exports = {
   }
   
 /**
- * Create a successful cas update, so we are sure we send a cas request correctly
+ * Create a unsuccessful cas update, which would indicate that the server has changed
+ * while we where doing nothing.
  */
 , "unsuccessful cas update" : function(){
     var memcached = new Memcached(common.servers.single)
@@ -110,5 +111,4 @@ module.exports = {
       });
     });
   }
-
 };

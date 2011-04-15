@@ -93,6 +93,22 @@ module.exports = {
   }
   
 /**
+ * A common action when working with memcached servers, getting a key
+ * that does not exist anymore.
+ */
+, "get a non existing key": function(){
+    var memcached = new Memcached(common.servers.single)
+      , testnr = ++global.testnumbers;
+    
+    memcached.get("test:" + testnr, function(error, answer){
+      assert.ok(!error);
+      answer.should.be.false;
+      
+      memcached.end(); // close connections
+    });
+  }
+  
+/**
  * Make sure that Numbers are correctly send and stored on the server
  * retrieval of the number based values can be tricky as the client might
  * think that it was a INCR and not a SET operation.. So just to make sure..
