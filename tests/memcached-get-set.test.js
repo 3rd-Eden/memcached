@@ -63,10 +63,14 @@ module.exports = {
       , callbacks = 0;
     
     memcached.set("test:" + testnr, message, 1000, function(error, ok){
+      ++callbacks;
+      
       assert.ok(!error);
       ok.should.be.true;
       
       memcached.get("test:" + testnr, function(error, answer){
+        ++callbacks;
+      
         assert.ok(!error);
         
         assert.ok(typeof answer === 'string');
