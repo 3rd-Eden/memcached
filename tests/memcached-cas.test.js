@@ -42,7 +42,7 @@ module.exports = {
   }
 
 /**
- * Create a sucessful cas update
+ * Create a successful cas update, so we are sure we send a cas request correctly
  */
 , "successful cas update" : function(){
     var memcached = new Memcached(common.servers.single)
@@ -61,6 +61,7 @@ module.exports = {
         message = common.alphabet(256);
         memcached.cas("test:" + testnr, message, answer.cas, 1000, function(error, answer){
           assert.ok(!error);
+          assert.ok(!!answer);
           
           memcached.get("test:" + testnr, function(error, answer){
             
@@ -73,4 +74,41 @@ module.exports = {
       });
     });
   }
+  
+/**
+ * Create a successful cas update, so we are sure we send a cas request correctly
+ */
+, "unsuccessful cas update" : function(){
+    var memcached = new Memcached(common.servers.single)
+      , message = common.alphabet(256)
+      , testnr = ++global.testnumbers;
+    
+    memcached.set("test:" + testnr, message, 1000, function(error, ok){
+      assert.ok(!error);
+      ok.should.be.true;
+      
+      memcached.gets("test:" + testnr, function(error, answer){
+        assert.ok(!error);
+        assert.ok(!!answer.cas);
+        
+        // generate new message
+        message = common.alphabet(256);
+        memcached.set("test:" + testnr, message, 1000, function(){
+          memcached.cas("test:" + testnr, message, answer.cas, 1000, function(error, answer){
+            assert.ok(!error);
+            assert.ok(!answer);
+            
+            memcached.get("test:" + testnr, function(error, answer){
+              
+              assert.ok(!error);
+              answer.should.eql(message);
+              
+              memcached.end(); // close connections
+            })
+          });
+        });
+      });
+    });
+  }
+
 };
