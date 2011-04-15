@@ -65,6 +65,32 @@ module.exports = {
       });
     });
   }
+
+  
+/**
+ * Setting and getting a unicode value should just work, we need to make sure
+ * that we send the correct byteLength because utf8 chars can contain more bytes
+ * than "str".length would show, causing the memcached server to complain.
+ */
+, "set and get a regular string": function(){
+    var memcached = new Memcached(common.servers.single)
+      , message = 'привет мир, Memcached и nodejs для победы'
+      , testnr = ++global.testnumbers;
+    
+    memcached.set("test:" + testnr, message, 1000, function(error, ok){
+      assert.ok(!error);
+      ok.should.be.true;
+      
+      memcached.get("test:" + testnr, function(error, answer){
+        assert.ok(!error);
+        
+        assert.ok(typeof answer === 'string');
+        answer.should.eql(message);
+        
+        memcached.end(); // close connections
+      });
+    });
+  }
   
 /**
  * Make sure that Numbers are correctly send and stored on the server
