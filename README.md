@@ -16,12 +16,11 @@ The client is configurable on different levels. There's a global configuration t
 ## Setting up the client
 
 The constructor of the nMemcached client take 2 different arguments `server locations` and `options`. Syntax:
-``` js
-var nMemcached = require('nMemcached');
-var memcached = new nMemcached(Server locations, options);
-```
-### Server locations
 
+	var nMemcached = require('nMemcached');
+	var memcached = new nMemcached(Server locations, options);
+
+### Server locations
 The server locations is designed to work with different formats. These formats are all internally parsed to the correct format so our consistent hashing scheme can work with it. You can either use:
 
 1.	**String**, this only works if you have are running a single server instance of Memcached.
@@ -44,11 +43,10 @@ The server locations is designed to work with different formats. These formats a
 	distribution of the keys.
 
 If you would implement one of the above formats, your constructor would something like this:
-``` js
-var memcache = new nMemcached({ '192.168.0.102:11212': 1, '192.168.0.103:11212': 2, '192.168.0.104:11212': 1 });
-var memcache = new nMemcached([ '192.168.0.102:11212', '192.168.0.103:11212', '192.168.0.104:11212' ]);
-var memcache = new nMemcached('192.168.0.102:11212');
-```
+
+	var memcache = new nMemcached({ '192.168.0.102:11212': 1, '192.168.0.103:11212': 2, '192.168.0.104:11212': 1 });
+	var memcache = new nMemcached([ '192.168.0.102:11212', '192.168.0.103:11212', '192.168.0.104:11212' ]);
+	var memcache = new nMemcached('192.168.0.102:11212');
 
 ### Options
 
@@ -69,16 +67,14 @@ There 2 kinds of options that can be configured. A global configuration that wil
 * `keyCompression`: *true*, compress keys using md5 if they exceed the maxKeySize option.
 
 Example usage:
-``` js
-var memcache = new nMemcached('localhost:11212', {retries:10,retry:10000,remove:true,failOverServers:['192.168.0.103:11212']});
-```
+
+	var memcache = new nMemcached('localhost:11212', {retries:10,retry:10000,remove:true,failOverServers:['192.168.0.103:11212']});
 
 If you wish to configure the options globally:
-``` js
-var nMemcached = require( 'nMemcached' ).Client;
-// all global configurations should be applied to the .config object of the Client.
-nMemcached.config.poolSize = 25;
-```
+
+	var nMemcached = require( 'nMemcached' ).Client;
+	// all global configurations should be applied to the .config object of the Client.
+	nMemcached.config.poolSize = 25;
 
 ## API
 
@@ -100,12 +96,10 @@ If there are issues with the server connection, we are going to respond with cac
 `callback`: *Function*, The callback function that receives the net.Stream connection. It will be called with 2 arguments `error` and `connection`.
 
 Example
-``` js
-memcached.connect( '192.168.0.103:11212', function( err, conn ){
-	if( err ) throw new Error( err );
-	console.log( conn.server );
-});
-```
+	memcached.connect( '192.168.0.103:11212', function( err, conn ){
+		if( err ) throw new Error( err );
+		console.log( conn.server );
+	});
 ---------------------------------------
 #### .multi
 A small wrapper function that makes it easier to query multiple Memcached servers. It will return the location for each key or the complete list of servers.
@@ -122,15 +116,13 @@ A small wrapper function that makes it easier to query multiple Memcached server
 4.	`total`: *Number*, The total amount server retrieved.
 
 Example
-``` js
-memcached.multi( false, function( server, key, index, totals ){
-	if( err ) throw new Error( err );
-	
-	this.connect( server, function( err, conn ){
-		console.log( "connection ready" )
-	})
-});
-```
+	memcached.multi( false, function( server, key, index, totals ){
+		if( err ) throw new Error( err );
+		
+		this.connect( server, function( err, conn ){
+			console.log( "connection ready" )
+		})
+	});
 ---------------------------------------
 #### .command
 
@@ -145,18 +137,16 @@ is written to the Memcached server.
 `server`: *String*, The server the to connect. This is only needed when the metaData object doesn't contain a key property to retrieve the server from. 
 
 Example
-``` js
-memcached.command({
-	key: 'key', callback: function(){ console.dir( arguments ); },
+	memcached.command({
+		key: 'key', callback: function(){ console.dir( arguments ); },
 
-	// validate the arguments
-	validate: [[ 'key', String ], [ 'callback', Function ]],
+		// validate the arguments
+		validate: [[ 'key', String ], [ 'callback', Function ]],
 
-	// used for the query
-	type: 'delete',
-	command: 'delete key'
-});
-```
+		// used for the query
+		type: 'delete',
+		command: 'delete key'
+	});
 ---------------------------------------
 #### .connectionIssue
 
@@ -172,9 +162,7 @@ all these cases. For example server could crash or the Memcached server could re
 `callback`: *Function* **(optional)**, The callback function of a potential request, it will be marked as cache miss if it was provided
 
 Example
-``` js
-memcached.connectionIssue( "Server down", connectionReference );
-```
+	memcached.connectionIssue( "Server down", connectionReference );
 ## Callbacks
 
 Each method requires a callback function. Once this function get executed there will be 2 variables applied:
@@ -228,8 +216,7 @@ There are `5` different events that the nMemcached client emits when connection 
 * `remove`: removing the server from our consistent hashing.
 
 Example implementations:
-``` js
-var memcached = new nMemcached([ '192.168.0.102:11212', '192.168.0.103:11212' ]);
-memcached.on('failure', function( details ){ sys.error( "Server " + details.server + "went down due to: " + details.messages.join( '' ) ) });
-memcached.on('reconnecting', function( details ){ sys.debug( "Total downtime caused by server " + details.server + " :" + details.totalDownTime + "ms")});
-```
+
+	var memcached = new nMemcached([ '192.168.0.102:11212', '192.168.0.103:11212' ]);
+	memcached.on('failure', function( details ){ sys.error( "Server " + details.server + "went down due to: " + details.messages.join( '' ) ) });
+	memcached.on('reconnecting', function( details ){ sys.debug( "Total downtime caused by server " + details.server + " :" + details.totalDownTime + "ms")})
