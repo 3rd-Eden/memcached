@@ -37,6 +37,6 @@
     "node": "0.2.x"
   }
 , "dependencies": {
-      "hashring": "latest"
+      "hashring": ""
   }
 }
