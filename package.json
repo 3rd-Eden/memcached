@@ -2,7 +2,7 @@
   "name": "memcached"
 , "version": "0.0.1"
 , "author": "Arnout Kazemier"
-, "description": "A fully featured Memcached API client, supporting both single and clustered Memcached servers through consistent hashing and failover/failure"
+, "description": "A fully featured Memcached API client, supporting both single and clustered Memcached servers through consistent hashing and failover/failure. Memcached is rewrite of nMemcached, which will be deprecated in the near future."
 , "main": "index"
 , "keywords":[
     "memcached"
@@ -33,9 +33,6 @@
     "type": "git"
   , "url" : "http://github.com/3rd-Eden/node-memcached.git"
   }]
-, "engines": {
-    "node": "0.2.x"
-  }
 , "dependencies": {
       "hashring": ""
   }

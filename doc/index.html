@@ -108,178 +108,7 @@ code .this { color: #19469D; }</style>
 		</script>
 	</head>
 	<body>
-<table id="source"><tbody><tr><td><h1>node-memcached</h1></td><td></td></tr><tr class="filename"><td><h2 id="lib/connection.js"><a href="#">connection</a></h2></td><td>lib/connection.js</td></tr><tr class="code">
-<td class="docs">
-<p>var EventEmitter = require('events').EventEmitter
-  , Spawn = require('child_process').spawn
-  , Utils = require('./utils');</p>
-
-<p>exports.Manager = ConnectionManager; // connection pooling
-exports.IssueLog = IssueLog;         // connection issue handling
-exports.Available = ping;            // connection availablity</p>
-
-<p>function ping(host, callback){
-  var pong = Spawn('ping', [host]);</p>
-
-<p>  pong.stdout.on('data', function(data) {
-    callback(false, data.toString().split('\n')[0].substr(14));
-    pong.kill();
-  });</p>
-
-<p>  pong.stderr.on('data', function(data) {
-    callback(data.toString().split('\n')[0].substr(14), false);
-    pong.kill();
-  });
-};</p>
-
-<p>function IssueLog(args){
-  this.config = args;
-  this.messages = [];
-  this.failed = false;</p>
-
-<p>  this.totalRetries = 0;
-  this.totalReconnectsAttempted = 0;
-  this.totalReconnectsSuccess = 0;</p>
-
-<p>  Utils.merge(this, args);
-  EventEmitter.call(this);
-};</p>
-
-<p>var issues = IssueLog.prototype = new EventEmitter;</p>
-
-<p>issues.log = function(message){
-  var issue = this;</p>
-
-<p>  this.failed = true;
-  this.messages.push(message || 'No message specified');</p>
-
-<p>  if (this.retries){
-    setTimeout(Utils.curry(issue, issue.attemptRetry), this.retry);
-    return this.emit('issue', this.details);
-  }</p>
-
-<p>  if (this.remove) return this.emit('remove', this.details)</p>
-
-<p>  setTimeout(Utils.curry(issue, issue.attemptReconnect), this.reconnect);
-};</p>
-
-<p>Object.defineProperty(issues, 'details', {
-  get: function(){
-    var res = {};</p>
-
-<pre><code>res.server = this.server;
-res.tokens = this.tokens;
-res.messages = this.messages;
-
-if (this.retries){
-  res.retries = this.retries;
-  res.totalRetries = this.totalRetries
-} else {
-  res.totalReconnectsAttempted = this.totalReconnectsAttempted;
-  res.totalReconnectsSuccess = this.totalReconnectsSuccess;
-  res.totalReconnectsFailed = this.totalReconnectsAttempted - this.totalReconnectsSuccess;
-  res.totalDownTime = (res.totalReconnectsFailed * this.reconnect) + (this.totalRetries * this.retry);
-}
-
-return res;</code></pre>
-
-<p>  }
-});</p>
-
-<p>issues.attemptRetry = function(){
-  this.totalRetries++;
-  this.retries--;
-  this.failed = false;
-};</p>
-
-<p>issues.attemptReconnect = function(){
-  var issue = this;
-  this.totalReconnectsAttempted++;
-  this.emit('reconnecting', this.details);</p>
-
-<p>  // Ping the server
-  ping(this.tokens[1], function(err){
-    // still no access to the server
-    if (err){
-      this.messages.push(message || 'No message specified');
-      return setTimeout(Utils.curry(issue, issue.attemptReconnect), issue.reconnect);
-    }</p>
-
-<pre><code>issue.emit('reconnected', issue.details);
-
-issue.totalReconnectsSuccess++;
-issue.messages.length = 0;
-issue.failed = false;
-
-// we connected again, so we are going through the whole cycle again
-Utils.merge(issue, JSON.parse(JSON.stringify(issue.config)));</code></pre>
-
-<p>  });
-};</p>
-
-<p>function ConnectionManager(name, limit, constructor){
-  this.name = name;
-  this.total = limit;
-  this.factory = constructor;
-  this.connections = [];
-};</p>
-
-<p>var Manager = ConnectionManager.prototype;</p>
-
-<p>Manager.allocate = function(callback){
-  var total
-    , i = total = this.connections.length
-    , Manager = this;</p>
-
-<p>  // check for available
-  while(i--){
-    if (this.isAvailable(this.connections[i])){
-      return callback(false, this.connections[i]);
-    }
-  }</p>
-
-<p>  // create new
-  if (total &lt; this.total){
-    return this.connections.push(this.factory.apply(this, arguments));
-  }</p>
-
-<p>  // wait untill the next event loop tick, to try again
-  process.nextTick(function(){Manager.allocate(callback)});
-};</p>
-
-<p>Manager.isAvailable = function(connection){
-  var readyState = connection.readyState;
-  return (readyState == 'open' || readyState == 'writeOnly') &amp;&amp; !(connection.<em>writeQueue &amp;&amp; connection.</em>writeQueue.length);
-};</p>
-
-<p>Manager.remove = function(connection){
-  var position = this.connections.indexOf(connection);</p>
-
-<p>  if (position !== -1) this.connections.splice(position, 1);</p>
-
-<p>  if (connection.readyState &amp;&amp; connection.readyState !== 'closed' &amp;&amp; connection.end) connection.end();
-};</p>
-
-<p>Manager.free  = function(keep){
-  var save = 0
-    , connection;</p>
-
-<p>  while(this.connections.length){
-    connection = this.connections.shift();
-    if(save &lt; keep &amp;&amp; this.isAvailable(this.connection[0])){
-      save++
-      continue;
-    }</p>
-
-<pre><code>this.remove(connection);</code></pre>
-
-<p>  }
-};</p>
-</td>
-<td class="code">
-
-</td>
-</tr><tr class="filename"><td><h2 id="lib/memcached.js"><a href="#">memcached</a></h2></td><td>lib/memcached.js</td></tr><tr class="code">
+<table id="source"><tbody><tr><td><h1>node-memcached</h1></td><td></td></tr><tr class="filename"><td><h2 id="lib/memcached.js"><a href="#">memcached</a></h2></td><td>lib/memcached.js</td></tr><tr class="code">
 <td class="docs">
 <p>var EventEmitter = require('events').EventEmitter
   , Stream = require('net').Stream
@@ -1127,6 +956,177 @@ exports.Iterator = function iterator(collection, callback){
   this.hasNext = function(){
     return index &lt; maximum;
   };
+};</p>
+</td>
+<td class="code">
+
+</td>
+</tr><tr class="filename"><td><h2 id="lib/connection.js"><a href="#">connection</a></h2></td><td>lib/connection.js</td></tr><tr class="code">
+<td class="docs">
+<p>var EventEmitter = require('events').EventEmitter
+  , Spawn = require('child_process').spawn
+  , Utils = require('./utils');</p>
+
+<p>exports.Manager = ConnectionManager; // connection pooling
+exports.IssueLog = IssueLog;         // connection issue handling
+exports.Available = ping;            // connection availablity</p>
+
+<p>function ping(host, callback){
+  var pong = Spawn('ping', [host]);</p>
+
+<p>  pong.stdout.on('data', function(data) {
+    callback(false, data.toString().split('\n')[0].substr(14));
+    pong.kill();
+  });</p>
+
+<p>  pong.stderr.on('data', function(data) {
+    callback(data.toString().split('\n')[0].substr(14), false);
+    pong.kill();
+  });
+};</p>
+
+<p>function IssueLog(args){
+  this.config = args;
+  this.messages = [];
+  this.failed = false;</p>
+
+<p>  this.totalRetries = 0;
+  this.totalReconnectsAttempted = 0;
+  this.totalReconnectsSuccess = 0;</p>
+
+<p>  Utils.merge(this, args);
+  EventEmitter.call(this);
+};</p>
+
+<p>var issues = IssueLog.prototype = new EventEmitter;</p>
+
+<p>issues.log = function(message){
+  var issue = this;</p>
+
+<p>  this.failed = true;
+  this.messages.push(message || 'No message specified');</p>
+
+<p>  if (this.retries){
+    setTimeout(Utils.curry(issue, issue.attemptRetry), this.retry);
+    return this.emit('issue', this.details);
+  }</p>
+
+<p>  if (this.remove) return this.emit('remove', this.details)</p>
+
+<p>  setTimeout(Utils.curry(issue, issue.attemptReconnect), this.reconnect);
+};</p>
+
+<p>Object.defineProperty(issues, 'details', {
+  get: function(){
+    var res = {};</p>
+
+<pre><code>res.server = this.server;
+res.tokens = this.tokens;
+res.messages = this.messages;
+
+if (this.retries){
+  res.retries = this.retries;
+  res.totalRetries = this.totalRetries
+} else {
+  res.totalReconnectsAttempted = this.totalReconnectsAttempted;
+  res.totalReconnectsSuccess = this.totalReconnectsSuccess;
+  res.totalReconnectsFailed = this.totalReconnectsAttempted - this.totalReconnectsSuccess;
+  res.totalDownTime = (res.totalReconnectsFailed * this.reconnect) + (this.totalRetries * this.retry);
+}
+
+return res;</code></pre>
+
+<p>  }
+});</p>
+
+<p>issues.attemptRetry = function(){
+  this.totalRetries++;
+  this.retries--;
+  this.failed = false;
+};</p>
+
+<p>issues.attemptReconnect = function(){
+  var issue = this;
+  this.totalReconnectsAttempted++;
+  this.emit('reconnecting', this.details);</p>
+
+<p>  // Ping the server
+  ping(this.tokens[1], function(err){
+    // still no access to the server
+    if (err){
+      this.messages.push(message || 'No message specified');
+      return setTimeout(Utils.curry(issue, issue.attemptReconnect), issue.reconnect);
+    }</p>
+
+<pre><code>issue.emit('reconnected', issue.details);
+
+issue.totalReconnectsSuccess++;
+issue.messages.length = 0;
+issue.failed = false;
+
+// we connected again, so we are going through the whole cycle again
+Utils.merge(issue, JSON.parse(JSON.stringify(issue.config)));</code></pre>
+
+<p>  });
+};</p>
+
+<p>function ConnectionManager(name, limit, constructor){
+  this.name = name;
+  this.total = limit;
+  this.factory = constructor;
+  this.connections = [];
+};</p>
+
+<p>var Manager = ConnectionManager.prototype;</p>
+
+<p>Manager.allocate = function(callback){
+  var total
+    , i = total = this.connections.length
+    , Manager = this;</p>
+
+<p>  // check for available
+  while(i--){
+    if (this.isAvailable(this.connections[i])){
+      return callback(false, this.connections[i]);
+    }
+  }</p>
+
+<p>  // create new
+  if (total &lt; this.total){
+    return this.connections.push(this.factory.apply(this, arguments));
+  }</p>
+
+<p>  // wait untill the next event loop tick, to try again
+  process.nextTick(function(){Manager.allocate(callback)});
+};</p>
+
+<p>Manager.isAvailable = function(connection){
+  var readyState = connection.readyState;
+  return (readyState == 'open' || readyState == 'writeOnly') &amp;&amp; !(connection.<em>writeQueue &amp;&amp; connection.</em>writeQueue.length);
+};</p>
+
+<p>Manager.remove = function(connection){
+  var position = this.connections.indexOf(connection);</p>
+
+<p>  if (position !== -1) this.connections.splice(position, 1);</p>
+
+<p>  if (connection.readyState &amp;&amp; connection.readyState !== 'closed' &amp;&amp; connection.end) connection.end();
+};</p>
+
+<p>Manager.free  = function(keep){
+  var save = 0
+    , connection;</p>
+
+<p>  while(this.connections.length){
+    connection = this.connections.shift();
+    if(save &lt; keep &amp;&amp; this.isAvailable(this.connection[0])){
+      save++
+      continue;
+    }</p>
+
+<pre><code>this.remove(connection);</code></pre>
+
+<p>  }
 };</p>
 </td>
 <td class="code">
