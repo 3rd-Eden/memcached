@@ -67,8 +67,9 @@ There 2 kinds of options that can be configured. A global configuration that wil
 
 Example usage:
 
-<<<<<<< HEAD
-	var memcached = new Memcached('localhost:11212', {retries:10,retry:10000,remove:true,failOverServers:['192.168.0.103:11212']});
+``` js
+var memcached = new Memcached('localhost:11212', {retries:10,retry:10000,remove:true,failOverServers:['192.168.0.103:11212']});
+```
 
 If you wish to configure the options globally:
 
