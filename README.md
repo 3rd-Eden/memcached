@@ -74,7 +74,7 @@ var memcached = new Memcached('localhost:11212', {retries:10,retry:10000,remove:
 If you wish to configure the options globally:
 
 ``` js
-var Memcached = require( 'memcached' ).Client;
+var Memcached = require('memcached');
 // all global configurations should be applied to the .config object of the Client.
 Memcached.config.poolSize = 25;
 ```
