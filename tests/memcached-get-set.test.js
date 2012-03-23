@@ -287,7 +287,7 @@ module.exports = {
         ++callbacks;
         
         assert.ok(!error);
-        assert.ok(answer.toString('binary') === answer.toString('binary'));
+        assert.ok(answer.toString('binary') === message.toString('binary'));
         memcached.end(); // close connections
       });
     });
