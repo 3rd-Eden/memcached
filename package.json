@@ -1,6 +1,6 @@
 {
     "name": "memcached"
-  , "version": "0.0.8"
+  , "version": "0.0.9"
   , "author": "Arnout Kazemier"
   , "description": "A fully featured Memcached API client, supporting both single and clustered Memcached servers through consistent hashing and failover/failure. Memcached is rewrite of nMemcached, which will be deprecated in the near future."
   , "main": "index"
@@ -26,14 +26,18 @@
       , "url": "http://www.3rd-Eden.com"
     }]
   , "license": {
-      "type": "MIT"
-    , "url": "http://github.com/3rd-Eden/node-memcached/blob/master/LICENSE"
+        "type": "MIT"
+      , "url": "http://github.com/3rd-Eden/node-memcached/blob/master/LICENSE"
     }
   , "repository": {
-      "type": "git"
-    , "url" : "http://github.com/3rd-Eden/node-memcached.git"
+        "type": "git"
+      , "url" : "http://github.com/3rd-Eden/node-memcached.git"
     }
   , "dependencies": {
         "hashring": "*"
+    }
+  , "devDependencies": {
+        "mocha": "*"
+      , "should": "*"
     }
 }
