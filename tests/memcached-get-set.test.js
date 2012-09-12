@@ -259,13 +259,7 @@ describe("Memcached GET SET", function() {
 	        ++callbacks;
 				        
 	        assert.ok(!error);
-	        assert.ok(Buffer.isBuffer(answer));
-	        assert.ok(Buffer.isBuffer(message));
-	        //assert.equal(answer.toString('binary'), message.toString('binary'));
-	        assert.ok(message.toString('binary') === message.toString('binary'));
-	        assert.ok(answer.toString('binary') === answer.toString('binary'));
-	        console.log(answer.length, message.length);
-	        //assert.ok(answer.toString('binary') === message.toString('binary'));
+	        assert.ok(answer.toString('binary') === message.toString('binary'));
 	        memcached.end(); // close connections
 	        assert.equal(callbacks, 2);
 	        done();
