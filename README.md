@@ -8,6 +8,10 @@ When these issues occur the `memcached` client will emit different events where 
 
 The client is configurable on different levels. There's a global configuration that you update so all you Memcached clusters will use the same failure configuration for example, but it's also possible to overwrite these changes per `memcached` instance.
 
+### protocol
+
+This module uses the ASCII protocol to communicate with the server, this makes it easier to debug for you are user as you can see what is send over the wire but also for me as developer. But this also means that SASL auth is not supported in this driver as that requires the use of the binary protocol. The ASCII protocol not only used by memcached but also by other databases and message queues, so that is a nice extra.
+
 ## Setting up the client
 
 The constructor of the `memcached` client take 2 different arguments `server locations` and `options`. Syntax:
