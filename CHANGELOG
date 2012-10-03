@@ -1,20 +1,20 @@
 0.1.0
-	- Storing numeric values are now returned as numeric values, they are no
-		longer strings.
+ - Storing numeric values are now returned as numeric values, they are no
+   longer strings.
 
 0.0.12
-	- Added .setEncoding to the connections, this way UTF-8 chars will not be
-		chopped in to multiple pieces and breaking binary stored data or UTF-8 text
+ - Added .setEncoding to the connections, this way UTF-8 chars will not be
+   chopped in to multiple pieces and breaking binary stored data or UTF-8 text
 
 0.0.11
-	- Added more useful error messages instead of returning false. Please note
-		that they are still strings instead of Error instances (legacy)
+ - Added more useful error messages instead of returning false. Please note
+   that they are still strings instead of Error instances (legacy)
 
 0.0.10
-	- Compatiblity with Node.js 0.8
-	- Don't saturate the Node process by retrying to connect if pool is full #43
-	- Minor code formatting
+ - Compatiblity with Node.js 0.8
+ - Don't saturate the Node process by retrying to connect if pool is full #43
+ - Minor code formatting
 
-	0.0.9
-	- Codestyle refactor, named the functions, removed tabs
-	- Added Mocha test suite
+0.0.9
+ - Codestyle refactor, named the functions, removed tabs
+ - Added Mocha test suite
