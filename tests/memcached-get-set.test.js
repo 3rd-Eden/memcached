@@ -150,8 +150,8 @@ describe("Memcached GET SET", function() {
 	        
 	        assert.ok(!error);
 	        
-	        assert.ok(typeof answer === 'string');
-	        answer.should.eql(answer);
+	        assert.ok(typeof answer === 'number');
+	        answer.should.eql(message);
 	        
 	        memcached.end(); // close connections
 	        assert.equal(callbacks, 2);
