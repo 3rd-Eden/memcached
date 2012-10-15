@@ -1,3 +1,7 @@
+0.1.1
+ - Now using 3rd-Eden/jackpot as connection pool, this should give a more stable
+   connection.
+
 0.1.0
  - Storing numeric values are now returned as numeric values, they are no
    longer strings.
