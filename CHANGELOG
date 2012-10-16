@@ -1,3 +1,6 @@
+0.1.2
+ - Returning an error when the Memcached server issues a NOT_STORED response.
+
 0.1.1
  - Now using 3rd-Eden/jackpot as connection pool, this should give a more stable
    connection.
