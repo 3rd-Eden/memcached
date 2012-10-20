@@ -1,3 +1,7 @@
+0.1.3
+ - Handle Memcached responses that contain no value.
+ - Travis CI integration.
+
 0.1.2
  - Returning an error when the Memcached server issues a NOT_STORED response.
 
@@ -18,7 +22,7 @@
    that they are still strings instead of Error instances (legacy)
 
 0.0.10
- - Compatiblity with Node.js 0.8
+ - Compatibility with Node.js 0.8
  - Don't saturate the Node process by retrying to connect if pool is full #43
  - Minor code formatting
 
