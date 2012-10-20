@@ -1,14 +1,27 @@
+
+/**
+ * Make should available in all test cases.
+ */
+var should = require('should');
+
 /**
  * Server ip addresses that get used during the tests
  * NOTE! Make sure you configure empty servers as they
  * will get flushed!.
+ * 
+ * If your memcache hosts is not the default one
+ * (10.211.55.5), you can pass another one using the
+ * environment variable MEMCACHED__HOST. E.g.:
+ * 
+ * MEMCACHED__HOST=localhost npm test
  *
  * @type {Object}
  * @api public
  */
+var testMemcachedHost = process.env['MEMCACHED__HOST'] || '10.211.55.5';
 exports.servers = {
-  single: '10.211.55.5:11211'
-, multi: ['10.211.55.5:11211', '10.211.55.5:11212', '10.211.55.5:11213']
+  single: testMemcachedHost + ':11211'
+, multi: [testMemcachedHost + ':11211', testMemcachedHost + ':11212', testMemcachedHost + ':11213']
 };
 
 /**

@@ -47,6 +47,33 @@ describe("Memcached GET SET", function() {
       });
   });
 
+  it("set and get an empty string", function(done) {
+    var memcached = new Memcached(common.servers.single)
+        , testnr = ++global.testnumbers
+        , callbacks = 0;
+
+      memcached.set("test:" + testnr, "", 1000, function(error, ok){
+        ++callbacks;
+
+        assert.ok(!error);
+        ok.should.be.true;
+
+        memcached.get("test:" + testnr, function(error, answer){
+          ++callbacks;
+
+          assert.ok(!error);
+
+          assert.ok(typeof answer === 'string');
+          answer.should.eql("");
+
+          memcached.end(); // close connections
+          assert.equal(callbacks, 2);
+          done();
+
+        });
+      });
+  });
+
   /**
    * Set a stringified JSON object, and make sure we only return a string
    * this should not be flagged as JSON object
