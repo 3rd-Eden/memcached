@@ -41,4 +41,7 @@
         "mocha": "*"
       , "should": "*"
     }
+  , "scripts": {
+      "test": "./node_modules/.bin/mocha tests/"
+    }
 }
