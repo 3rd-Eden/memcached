@@ -42,6 +42,6 @@
       , "should": "*"
     }
   , "scripts": {
-      "test": "./node_modules/.bin/mocha tests/"
+      "test": "./node_modules/.bin/mocha $(shell find test -name '*.test.js')"
     }
 }
