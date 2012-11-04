@@ -1,3 +1,7 @@
+0.1.4
+ - Added missing error listener to the 3rd-Eden/jackpot module, this prevents crashes
+   when it's unable to connect to a server.
+
 0.1.3
  - Handle Memcached responses that contain no value.
  - Travis CI integration.
