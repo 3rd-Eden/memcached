@@ -1,3 +1,9 @@
+0.1.5
+ - Don't execute callbacks multiple times if the connection fails
+ - Parser fix for handling server responses that contain Memcached Procotol
+   keywords
+ - Make sure that the retry option is set correctly
+
 0.1.4
  - Added missing error listener to the 3rd-Eden/jackpot module, this prevents crashes
    when it's unable to connect to a server.
