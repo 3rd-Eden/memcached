@@ -6,7 +6,4 @@ test:
 travisci:
 	MEMCACHED__HOST=localhost $(MAKE) test
 
-doc:
-	dox --title "node-memcached" lib/* > doc/index.html
-
-.PHONY: test doc
+.PHONY: test
