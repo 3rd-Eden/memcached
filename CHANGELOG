@@ -1,3 +1,7 @@
+0.2.0
+ - [breaking] We are now returning Error instances instead of strings for errors
+ - Dependency bump for a critical bug in our connection pool.
+
 0.1.5
  - Don't execute callbacks multiple times if the connection fails
  - Parser fix for handling server responses that contain Memcached Procotol
