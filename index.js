@@ -105,6 +105,7 @@ Memcached.prototype.select = function select(address, callback) {
       , queue = []
       , undefined;
 
+    // Received a new response from the parser.
     parser.on('response', function response(command, arg1) {
       var type = typeof arg1;
 
@@ -118,8 +119,25 @@ Memcached.prototype.select = function select(address, callback) {
       }
     });
 
+    // Received a new error response from the server, maybe the server broke
+    // down or the client messed up..
     parser.on('error:response', function response(err) {
       connection.callbacks.pop()(err);
+    });
+
+    // The parser received a response from the server that is unknown to him, so
+    // this means we parse the data further. We need to destroy this connection
+    // and mark all callbacks as error'd out. One of the reasons of this Error
+    // is that the `memcached-stream` parser parsed something incorrectly and
+    // did not remove all data from it's internal queue.
+    parser.on('error', function error(err) {
+      pool.remove(connection);
+      connection.callbacks.forEach(function forEach(callback) {
+        callback(err);
+      });
+
+      // Clear the callback so they cannot be called again.
+      connection.callbacks.length = 0;
     });
 
     // Configure the stream.
@@ -141,7 +159,9 @@ Memcached.prototype.select = function select(address, callback) {
     // The pool got an error.. o dear.
     // @TODO handle this? Or just assume that it will be handled by connection
     // pool as it will remove the connection and generate a new one.
-    if (self.debug) self.emit('debug:connection:error', err);
+    if (self.debug) {
+      self.emit('error:connection', 'Connection failed and emitted an error.', err);
+    }
   });
 
   // Allocate a new connection from the pool.
