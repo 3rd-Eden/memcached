@@ -9,17 +9,17 @@
 var crc32 = require('crc32');
 var Membase = require('../index.js');
 var m1 = new Membase("127.0.0.1:11211", {poolSize:50, maxQueueSize:1000});
-var m2 = new Membase("127.0.0.1:11212", {poolSize:50, maxQueueSize:1000});
-var m3 = new Membase("127.0.0.1:11213", {poolSize:50, maxQueueSize:1000});
-var m4 = new Membase("127.0.0.1:11214", {poolSize:50, maxQueueSize:1000});
-var m5 = new Membase("127.0.0.1:11215", {poolSize:50, maxQueueSize:1000});
-var m6 = new Membase("127.0.0.1:11216", {poolSize:50, maxQueueSize:1000});
-var m7 = new Membase("127.0.0.1:11217", {poolSize:50, maxQueueSize:1000});
-var m8 = new Membase("127.0.0.1:11218", {poolSize:50, maxQueueSize:1000});
-var m9 = new Membase("127.0.0.1:11219", {poolSize:50, maxQueueSize:1000});
+//var m2 = new Membase("127.0.0.1:11212", {poolSize:50, maxQueueSize:1000});
+//var m3 = new Membase("127.0.0.1:11213", {poolSize:50, maxQueueSize:1000});
+//var m4 = new Membase("127.0.0.1:11214", {poolSize:50, maxQueueSize:1000});
+//var m5 = new Membase("127.0.0.1:11215", {poolSize:50, maxQueueSize:1000});
+//var m6 = new Membase("127.0.0.1:11216", {poolSize:50, maxQueueSize:1000});
+//var m7 = new Membase("127.0.0.1:11217", {poolSize:50, maxQueueSize:1000});
+//var m8 = new Membase("127.0.0.1:11218", {poolSize:50, maxQueueSize:1000});
+//var m9 = new Membase("127.0.0.1:11219", {poolSize:50, maxQueueSize:1000});
 
 
-var membases = [m1,m2,m3,m4,m5,m6,m7,m8,m9];
+//var membases = [m1,m2,m3,m4,m5,m6,m7,m8,m9];
 var i =0;
 for (i =0;i<10000;i++){
     setInterval(function(){
@@ -32,7 +32,7 @@ function go(val){
     var key = GUID();
     var value = GUID();
     //set
-    membases[defaultShard(key)].set(key, value, 60, function(err, result){
+    m1.set(key, value, 60, function(err, result){
         if (err){
             if (err !== "over queue limit"){
                 throw new Error(err);
@@ -41,7 +41,7 @@ function go(val){
             }
         }
         console.log("SET: " + result);
-        membases[defaultShard(key)].get(key, function(err, result){
+        m1.get(key, function(err, result){
             if (err){
                 if (err !== "over queue limit"){
                     throw new Error(err);
@@ -54,9 +54,9 @@ function go(val){
     } );
 }
 
-function defaultShard(key){
-    return (((crc32(key) >>> 16) & 0x7fff) % membases.length) || 0;
-}
+//function defaultShard(key){
+//    return (((crc32(key) >>> 16) & 0x7fff) % membases.length) || 0;
+//}
 
 function S4()
 {
