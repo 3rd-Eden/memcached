@@ -33,19 +33,28 @@ function Memcached(servers, opts) {
   }, this);
 
   this.ring = opts.ring || new HashRing(
-      servers.weights || servers.servers          // Default to weighted servers
+      servers.weights || servers.regular          // Default to weighted servers
     , this.algorithm                              // Algorithm used for hasing
     , opts.hashring || {}                         // Control the hashring
   );
 
+  var failovers = Memcached.parse(opts.failover || []).servers;
   this.failover = new Failover(
-      (opts.failover || []).map(Memcached.address)
+      failovers
     , opts.failover || {}
   );
 
   // Private properties that should never be overwritten by options.
   this.servers = servers.servers;
+  this.length = this.servers.length;
+
+  this.addresses = Object.create(null);
   this.pool = Object.create(null);
+
+  // Fill up our addresses hash
+  this.servers.concat(failovers).forEach(function servers(server) {
+    this.addresses[server.string] = server;
+  }, this);
 }
 
 Memcached.prototype.__proto__ = EventEmitter.prototype;
@@ -101,22 +110,35 @@ Memcached.prototype.select = function select(address, callback) {
 
   pool = new ConnectionPool(this.size, function factory() {
     var parser = new Parser()
-      , connection = net.connect()
-      , queue = []
+      , connection = net.connect() // @TODO actually connect
+      , queue = {}
       , undefined;
 
     // Received a new response from the parser.
-    parser.on('response', function response(command, arg1) {
+    parser.on('response', function response(command, arg1, arg2) {
       var type = typeof arg1;
+
+      // The response is an indication that we need to flush our queued data and
+      // send it to our callback.
+      if ('END' === command && queue.length) {
+        connection.callbacks.pop()(undefined, queue);
+        queue = {};
+      }
 
       // All responses that do not need to be queued have a Boolean as first
       // argument that indicates if the action was succesfull or not.
-      if (type === 'boolean') {
-        return connection.callback.pop()(undefined, arg1);
-      } else if (type === 'number') {
+      if ('boolean' === type) {
+        return connection.callbacks.pop()(undefined, arg1);
+      } else if ('number' === type) {
         // If we have a pure number response, it was a INCR/DECR response.
-        return connection.callback.pop()(undefined, arg1);
+        return connection.callbacks.pop()(undefined, arg1);
+      } else if (arguments.length === 3) {
+        return connection.callbacks.pop()(undefined, arg1, arg2);
       }
+
+      // The data needs to be queued, we are dealing with a possible multiple
+      // responses like multiple VALUE or STAT's this data needs to be queued
+      // until we get the END response
     });
 
     // Received a new error response from the server, maybe the server broke
@@ -172,6 +194,40 @@ Memcached.prototype.select = function select(address, callback) {
 };
 
 /**
+ * Write a response to the memcached server.
+ *
+ * @param {String} hash either key or custom hash to fetch from hashring
+ * @param {String} command command string for the server
+ * @param {String|undefined} data optional data fragment
+ * @param {Function} callback optional callback
+ */
+Memcached.prototype.send = function send(hash, command, data, callback) {
+  var server;
+
+  // The fastest and most common case, we only have one single server by
+  // checking the internal length server saves even more performance.
+  if (this.length === 1) server = this.servers[0];
+  else server = this.addresses[server] = this.hashring.get(hash);
+
+  this.select(server, function selected(err, connection) {
+    if (err) return callback && callback(err);
+
+    // Complete the command string, if we don't have a callback we assume that
+    // the user wanted to do a fire and forget. To make this faster, we are just
+    // gonna append noreply to the command so we don't receive a server
+    // response. Please note that this can cause errors..
+    if (!callback) command += ' noreply';
+    command += '\r\n';
+
+    // Add the data frame if we need to
+    if (data) command += data + '\r\n';
+
+    if (callback) connection.callbacks(callback);
+    connection.write(command);
+  });
+};
+
+/**
  * Shut down the memcached client.
  *
  * @api public
@@ -197,26 +253,29 @@ Memcached.prototype.end = function end() {
 /**
  * Parse the server argument to a uniform format.
  *
- * @param {Mixed} servers
+ * @param {Mixed} args
  * @returns {Object}
  * @api private
  */
-Memcached.parse = function parse(servers) {
-  if (arguments.length > 1) return {
-      servers: Array.prototype.slice.call(arguments, 0).map(Memcached.address)
-  };
+Memcached.parse = function parse(args) {
+  var servers;
 
-  if (Array.isArray(servers)) return {
-      servers: servers.map(Memcached.address)
-  };
-
-  if ('object' === typeof servers) return {
-      weights: servers
-    , servers: Object.keys(servers).map(Memcached.address)
-  };
+  if (arguments.length > 1) {
+    servers = Array.prototype.slice.call(arguments, 0).map(Memcached.address);
+  } else if (Array.isArray(args)) {
+    servers = args.map(Memcached.address);
+  } else if('object' === typeof args) {
+    servers = Object.keys(args).map(Memcached.address);
+  } else {
+    servers = [args].map(Memcached.address);
+  }
 
   return {
-      servers: [servers].map(Memcached.address)
+      servers: servers
+    , weights: 'object' === typeof args ? args : null
+    , regular: servers.map(function regular(server) {
+        return server.string;
+      })
   };
 };
 
@@ -241,6 +300,33 @@ Memcached.address = function address(server) {
     , port: +pattern[1]
     , string: pattern
   };
+};
+
+/**
+ * Simple templating engine that we use to generate different function bodies.
+ *
+ * @param {String} str template
+ * @param {Object} data optional data
+ * @returns {Mixed} function if you don't supply it with data
+ */
+Memcached.compile = function compile(str, data) {
+  var compiler = new Function('locals',
+      'var p = []; function print(){ p.push.apply(p, arguments); };'
+    + 'with (locals) {'
+    + 'p.push(\''
+    + str
+        .replace(/[\r\t\n]/g, " ")
+        .split("<%").join("\t")
+        .replace(/((^|%>)[^\t]*)'/g, "$1\r")
+        .replace(/\t=(.*?)%>/g, "',$1,'")
+        .split("\t").join("');")
+        .split("%>").join("p.push('")
+        .split("\r").join("\\'")
+    + '\');}'
+    + 'return p.join("")'
+  );
+
+  return data ? compiler(data) : compiler;
 };
 
 //
