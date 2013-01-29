@@ -538,4 +538,53 @@ describe("Memcached GET SET", function() {
       });
     });
   });
+  
+  /**
+    * Make sure long keys are hashed
+    */
+   it("make sure you can get really long strings", function(done) {
+     var memcached = new Memcached(common.servers.single)
+       , message = 'VALUE hello, I\'m not really a value.'
+       , testnr = "01234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"+(++global.testnumbers)
+       , callbacks = 0;
+
+     memcached.set("test:" + testnr, message, 1000, function(error, ok){
+       ++callbacks;
+
+       assert.ok(!error);
+       ok.should.be.true;
+
+       memcached.get("test:" + testnr, function(error, answer){
+         ++callbacks;
+
+         assert.ok(!error);
+
+         assert.ok(typeof answer === 'string');
+         answer.should.eql(message);
+
+         memcached.end(); // close connections
+         assert.equal(callbacks, 2);
+         done();
+       });
+     });
+   });
+   
+   /**
+     * Make sure keys with spaces return an error
+     */
+    it("errors on spaces in strings", function(done) {
+      var memcached = new Memcached(common.servers.single)
+        , message = 'VALUE hello, I\'m not really a value.'
+        , testnr = " "+(++global.testnumbers)
+        , callbacks = 0;
+
+      memcached.set("test:" + testnr, message, 1000, function(error, ok){
+        ++callbacks;
+
+        assert.ok(error);
+        assert.ok(error.message == 'The key should not contain any whitespace or new lines')
+        
+        done();
+      });
+    });
 });
