@@ -135,14 +135,29 @@ Memcached.prototype.factory = function factory(address) {
     , undefined
     , self = this;
 
+  /**
+   * Parse JSON flags.
+   *
+   * @api private
+   */
   parser.flag(2, function parse(value) {
     return JSON.parse(value);
   });
 
+  /**
+   * Parse Binary flags
+   *
+   * @api private
+   */
   parser.flag(4, function parse(value, binary) {
     return binary;
   });
 
+  /**
+   * Parser Number flags
+   *
+   * @api private
+   */
   parser.flag(8, function parse(value) {
     return +value;
   });
@@ -155,23 +170,23 @@ Memcached.prototype.factory = function factory(address) {
     // send it to our callback.
     if ('END' === command && queue.length) {
       connection.callbacks.pop()(undefined, queue);
-      queue = {};
+      return queue = {};
     }
 
-    // All responses that do not need to be queued have a Boolean as first
-    // argument that indicates if the action was succesfull or not.
-    if ('boolean' === type) {
+    if ('boolean' === type || 'number' === type || 'VERSION' === command) {
       return connection.callbacks.pop()(undefined, arg1);
-    } else if ('number' === type) {
-      // If we have a pure number response, it was a INCR/DECR response.
-      return connection.callbacks.pop()(undefined, arg1);
-    } else if (arguments.length === 3) {
-      return connection.callbacks.pop()(undefined, arg1, arg2);
     }
 
     // The data needs to be queued, we are dealing with a possible multiple
     // responses like multiple VALUE or STAT's this data needs to be queued
-    // until we get the END response
+    // until we get the END response.
+    if ('VALUE' === command) {
+
+    } else if ('STAT' === command) {
+
+    } else if ('KEY' === command) {
+
+    }
   });
 
   // Received a new error response from the server, maybe the server broke
@@ -219,13 +234,13 @@ Memcached.prototype.factory = function factory(address) {
  * @param {String|undefined} data optional data fragment
  * @param {Function} callback optional callback
  */
-Memcached.prototype.send = function send(hash, command, data, callback) {
-  var server;
-
-  // The fastest and most common case, we only have one single server by
-  // checking the internal length server saves even more performance.
-  if (this.length === 1) server = this.servers[0];
-  else server = this.addresses[server] = this.hashring.get(hash);
+Memcached.prototype.send = function send(hash, command, data, callback, server) {
+  if (!server) {
+    // The fastest and most common case, we only have one single server by
+    // checking the internal length server saves even more performance.
+    if (this.length === 1) server = this.servers[0];
+    else server = this.addresses[server] = this.hashring.get(hash);
+  }
 
   this.select(server, function selected(err, connection) {
     if (err) return callback && callback(err);
@@ -244,6 +259,83 @@ Memcached.prototype.send = function send(hash, command, data, callback) {
     connection.write(command);
   });
 };
+
+/**
+ * Reduces a bunch of keys to a server mapping so we can fetch the keys in
+ * paralel from different servers.
+ *
+ * @param {Array} keysA
+ * @returns {Object} servers locations
+ */
+Memcached.prototype.reduce = function reduce(keys) {
+  var ring = this.hashring;
+
+  return keys.reduce(function reducer(servers, key) {
+    var server = ring.get(key);
+
+    if (!servers[server]) servers[server] = [];
+    servers[server].push(key);
+
+    return servers;
+  }, {});
+};
+
+/* * * * * * * * * * * * * * * * * * § MAGIC § * * * * * * * * * * * * * * * * * */
+/* THIS IS WHERE ALL THE MAGIC HAPPENS, IT'S SO MAGICAL THAT I'M GOING TO WRITE  */
+/*     ALL OF THIS IN CAPSLOCK. WE ARE GOING TO GENERATE NEW FUNCTIONS USING     */
+/*                A FUNCTION TEMPLATE AND BOOM, LESS CODE.                       */
+/* * * * * * * * * * * * * * * * * * § MAGIC § * * * * * * * * * * * * * * * * * */
+
+[
+    'get'
+  , 'gets'
+  , 'delete'
+].forEach(function compiling(command) {
+  Memcached.prototype[command] = new Function('key, callback', [
+      "var hash = key;"
+    , "if ('object' === typeof key) {"
+    , "  hash = key.hash;"
+    , "  key = key.key;"
+    , "}"
+    , "this.send(hash, '"+ command +" '+key, undefined, callback);"
+  ].join(''));
+});
+
+[
+    'incr'
+  , 'decr'
+  , 'touch'
+].forEach(function compiling(command) {
+  Memcached.prototype[command] = new Function('key, value, callback', [
+      "var hash = key;"
+    , "if ('object' === typeof key) {"
+    , "  hash = key.hash;"
+    , "  key = key.key;"
+    , "}"
+    , "if ('function' ==== value) {"
+    , "  callback = value;"
+    , "  value = 0;"
+    , "}"
+    , "this.send(hash, '"+ command +" '+ key +' '+ value, undefined, callback);"
+  ].join(''));
+});
+
+[
+    'version'
+  , 'stats'
+  , 'stats settings'
+  , 'stats slabs'
+  , 'stats items'
+].forEach(function compiling(command) {
+  var api = command;
+
+  if (~command.indexOf(' ')) api = command.split(' ')[1];
+
+  Memcached.prototype[api] = new Function('callback', [
+      // @TODO multiple servers
+      "this.send(hash, '"+ command +", undefined, callback);"
+  ].join(''));
+});
 
 /**
  * Shut down the memcached client.
@@ -327,7 +419,9 @@ Memcached.address = function address(server) {
  * @param {Object} data optional data
  * @returns {Mixed} function if you don't supply it with data
  */
-Memcached.compile = function compile(str, data) {
+Memcached.compile = function compile(args, str, data) {
+  data = data || {};
+
   var compiler = new Function('locals',
       'var p = []; function print(){ p.push.apply(p, arguments); };'
     + 'with (locals) {'
@@ -344,7 +438,7 @@ Memcached.compile = function compile(str, data) {
     + 'return p.join("")'
   );
 
-  return data ? compiler(data) : compiler;
+  return new Function(args, compiler(data));
 };
 
 //
