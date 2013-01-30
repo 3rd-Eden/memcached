@@ -61,6 +61,8 @@ Memcached.prototype.__proto__ = EventEmitter.prototype;
 
 /**
  * Configure the Memcached Client. Start preparing for failover
+ *
+ * @api private
  */
 Memcached.prototype.configure = function configure() {
   var self = this;
@@ -108,74 +110,7 @@ Memcached.prototype.select = function select(address, callback) {
     return this;
   }
 
-  pool = new ConnectionPool(this.size, function factory() {
-    var parser = new Parser()
-      , connection = net.connect() // @TODO actually connect
-      , queue = {}
-      , undefined;
-
-    // Received a new response from the parser.
-    parser.on('response', function response(command, arg1, arg2) {
-      var type = typeof arg1;
-
-      // The response is an indication that we need to flush our queued data and
-      // send it to our callback.
-      if ('END' === command && queue.length) {
-        connection.callbacks.pop()(undefined, queue);
-        queue = {};
-      }
-
-      // All responses that do not need to be queued have a Boolean as first
-      // argument that indicates if the action was succesfull or not.
-      if ('boolean' === type) {
-        return connection.callbacks.pop()(undefined, arg1);
-      } else if ('number' === type) {
-        // If we have a pure number response, it was a INCR/DECR response.
-        return connection.callbacks.pop()(undefined, arg1);
-      } else if (arguments.length === 3) {
-        return connection.callbacks.pop()(undefined, arg1, arg2);
-      }
-
-      // The data needs to be queued, we are dealing with a possible multiple
-      // responses like multiple VALUE or STAT's this data needs to be queued
-      // until we get the END response
-    });
-
-    // Received a new error response from the server, maybe the server broke
-    // down or the client messed up..
-    parser.on('error:response', function response(err) {
-      connection.callbacks.pop()(err);
-    });
-
-    // The parser received a response from the server that is unknown to him, so
-    // this means we parse the data further. We need to destroy this connection
-    // and mark all callbacks as error'd out. One of the reasons of this Error
-    // is that the `memcached-stream` parser parsed something incorrectly and
-    // did not remove all data from it's internal queue.
-    parser.on('error', function error(err) {
-      pool.remove(connection);
-      connection.callbacks.forEach(function forEach(callback) {
-        callback(err);
-      });
-
-      // Clear the callback so they cannot be called again.
-      connection.callbacks.length = 0;
-    });
-
-    // Configure the stream.
-    connection.setEncoding('utf-8');        // Required for the parser
-    connection.setTimeout(self.timeout);    // To keep the connections low
-    connection.setNoDelay(true);            // No Nagel algorithm
-
-    // Add addition properties to the connection for callback handling etc.
-    connection.callbacks = [];
-    connection.parser = parser;
-
-    // @TODO figure out how we are going to handle the connection pool here, we
-    // don't really want.
-    self.failover.connect(connection).pipe(parser);
-    return connection;
-  });
+  pool = new ConnectionPool(this.size, this.factory.bind(this, address));
 
   pool.on('error', function error(err) {
     // The pool got an error.. o dear.
@@ -191,6 +126,89 @@ Memcached.prototype.select = function select(address, callback) {
   this.pool[address] = pool;
 
   return this;
+};
+
+Memcached.prototype.factory = function factory(address) {
+  var parser = new Parser()
+    , connection = net.connect() // @TODO actually connect
+    , queue = {}
+    , undefined
+    , self = this;
+
+  parser.flag(2, function parse(value) {
+    return JSON.parse(value);
+  });
+
+  parser.flag(4, function parse(value, binary) {
+    return binary;
+  });
+
+  parser.flag(8, function parse(value) {
+    return +value;
+  });
+
+  // Received a new response from the parser.
+  parser.on('response', function response(command, arg1, arg2) {
+    var type = typeof arg1;
+
+    // The response is an indication that we need to flush our queued data and
+    // send it to our callback.
+    if ('END' === command && queue.length) {
+      connection.callbacks.pop()(undefined, queue);
+      queue = {};
+    }
+
+    // All responses that do not need to be queued have a Boolean as first
+    // argument that indicates if the action was succesfull or not.
+    if ('boolean' === type) {
+      return connection.callbacks.pop()(undefined, arg1);
+    } else if ('number' === type) {
+      // If we have a pure number response, it was a INCR/DECR response.
+      return connection.callbacks.pop()(undefined, arg1);
+    } else if (arguments.length === 3) {
+      return connection.callbacks.pop()(undefined, arg1, arg2);
+    }
+
+    // The data needs to be queued, we are dealing with a possible multiple
+    // responses like multiple VALUE or STAT's this data needs to be queued
+    // until we get the END response
+  });
+
+  // Received a new error response from the server, maybe the server broke
+  // down or the client messed up..
+  parser.on('error:response', function response(err) {
+    connection.callbacks.pop()(err);
+  });
+
+  // The parser received a response from the server that is unknown to him, so
+  // this means we parse the data further. We need to destroy this connection
+  // and mark all callbacks as error'd out. One of the reasons of this Error
+  // is that the `memcached-stream` parser parsed something incorrectly and
+  // did not remove all data from it's internal queue.
+  parser.on('error', function error(err) {
+    self.pool[address].remove(connection);
+
+    connection.callbacks.forEach(function forEach(callback) {
+      callback(err);
+    });
+
+    // Clear the callback so they cannot be called again.
+    connection.callbacks.length = 0;
+  });
+
+  // Configure the stream.
+  connection.setEncoding('utf-8');        // Required for the parser
+  connection.setTimeout(this.timeout);    // To keep the connections low
+  connection.setNoDelay(true);            // No Nagel algorithm
+
+  // Add addition properties to the connection for callback handling etc.
+  connection.callbacks = [];
+  connection.parser = parser;
+
+  // @TODO figure out how we are going to handle the connection pool here, we
+  // don't really want to handle it our selfs...
+  this.failover.connect(connection).pipe(parser);
+  return connection;
 };
 
 /**
