@@ -321,8 +321,42 @@ Memcached.prototype.reduce = function reduce(keys) {
 });
 
 [
-    'version'
-  , 'stats'
+    'set'
+  , 'add'
+  , 'cas'
+  , 'append'
+  , 'prepend'
+  , 'replace'
+].forEach(function compiling(command) {
+  var args = 'cas' === command
+    ? 'key, exptime, value, cas, callback'
+    : 'key, exptime, value, callback';
+
+  Memcached.prototype[command] = Memcached.compile(args, [
+      "var type = typeof value, flag = this.flagged || 0, bytes, hash;"
+    , "" // @TODO hash object stuff
+    , "if (!flag) {"
+    , "  if (Buffer.isBuffer(value)) {"
+    , "    value = value.toString('binary');"
+    , "    flag = 4;"
+    , "  } else if ('object' === type) {"
+    , "    value = JSON.stringify(value);"
+    , "    flag = 2;"
+    , "  } else if ('number' === type) {"
+    , "    flag = 8;"
+    , "  }"
+    , "}"
+    , "value = value.toString();"
+    , "bytes = Buffer.bytelength(value);"
+    , "this.send("
+    , "    hash"
+    , "  , '"+ command +" '+ key +' '+ flag +' '+ exptime +' '+ bytes"
+    , "  , value, callback);"
+  ].join(''), { command: command });
+});
+
+[
+    'stats'
   , 'stats settings'
   , 'stats slabs'
   , 'stats items'
@@ -332,8 +366,18 @@ Memcached.prototype.reduce = function reduce(keys) {
   if (~command.indexOf(' ')) api = command.split(' ')[1];
 
   Memcached.prototype[api] = new Function('callback', [
-      // @TODO multiple servers
-      "this.send(hash, '"+ command +", undefined, callback);"
+      "var completed = 0, responses = {}, length = this.length, error;"
+    , "this.servers.forEach(function servers(server) {"
+    , "  this.send(hash, '"+ command +", undefined, function done(err, res) {"
+    , "    if (err) {"
+    , "      callback(err);"
+    , "      return callback = function () {};"
+    , "    }"
+    , "    responses[server.string] = res;"
+    , "    if (++completed !== length) return;"
+    , "    callback(undefined, responses);"
+    , "  });"
+    , "}, this);"
   ].join(''));
 });
 
