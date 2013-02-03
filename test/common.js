@@ -1,6 +1,13 @@
 'use strict';
 
 /**
+ * Expose should globally.
+ *
+ * @api public
+ */
+global.should = require('chai').should();
+
+/**
  * Server ip addresses that get used during the tests
  * NOTE! Make sure you configure empty servers as they
  * will get flushed!.
