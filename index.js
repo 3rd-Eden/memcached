@@ -11,7 +11,7 @@ var Parser = require('memcached-stream').Parser
 /**
  * Node's native modules.
  */
-var EventEmitter = require('eventemitter')
+var EventEmitter = require('events').EventEmitter
   , net = require('net');
 
 function Memcached(servers, opts) {
@@ -60,6 +60,89 @@ function Memcached(servers, opts) {
 Memcached.prototype.__proto__ = EventEmitter.prototype;
 
 /**
+ * Parse the server argument to a uniform format.
+ *
+ * @param {Mixed} args
+ * @returns {Object}
+ * @api private
+ */
+Memcached.parse = function parse(args) {
+  var servers;
+
+  if (arguments.length > 1) {
+    servers = Array.prototype.slice.call(arguments, 0).map(Memcached.address);
+  } else if (Array.isArray(args)) {
+    servers = args.map(Memcached.address);
+  } else if('object' === typeof args) {
+    servers = Object.keys(args).map(Memcached.address);
+  } else {
+    servers = [args].map(Memcached.address);
+  }
+
+  return {
+      servers: servers
+    , weights: 'object' === typeof args ? args : null
+    , regular: servers.map(function regular(server) {
+        return server.string;
+      })
+  };
+};
+
+/**
+ * Transforms the server in to an Object containing the port number and the
+ * hostname.
+ *
+ * @param {Mixed} server
+ * @returns {Object}
+ * @api private
+ */
+Memcached.address = function address(server) {
+  if ('string' !== typeof server) {
+    server.string = server.host +':'+ server.port;
+    return server;
+  }
+
+  var pattern = server.split(':');
+
+  return {
+      host: pattern[0]
+    , port: +pattern[1]
+    , string: pattern
+  };
+};
+
+/**
+ * Simple templating engine that we use to generate different function bodies.
+ *
+ * @param {String} str template
+ * @param {Object} data optional data
+ * @returns {Mixed} function if you don't supply it with data
+ */
+Memcached.compile = function compile(args, str, data) {
+  data = data || {};
+
+  var compiler = new Function('locals',
+      'var p = [];'
+
+    // Introduce the data as local variables using with(){}
+    + 'with (locals) { p.push("'
+
+    // Convert the template into pure JavaScript
+    + str
+        .replace(/[\r\t\n]/g, ' ')
+        .split('<%').join('\t')
+        .replace(/((^|%>)[^\t]*)"/g, '$1\r')
+        .replace(/\t=(.*?)%>/g, '",$1,"')
+        .split('\t').join('");')
+        .split('%>').join('p.push("')
+        .split('\r').join('\\"')
+    + '");}return p.join("");'
+  );
+
+  return new Function(args, compiler(data));
+};
+
+/**
  * Configure the Memcached Client. Start preparing for failover
  *
  * @api private
@@ -71,8 +154,22 @@ Memcached.prototype.configure = function configure() {
   // A Memcached server has become unresponsive and we had to failover to
   // different server.
   //
-  this.failover.on('failover', function failover(from, to) {
+  this.failover.on('failover', function failover(from, to, connection) {
     self.hashring.replace(from.string, to.string);
+
+    // As a failover occured, we need to update our internal pool as we changed
+    // our hashring above, so it will point to the new server location. Normally
+    // you wouldn't need to change your hashring and update the pool to reflect
+    // these changes, but I like to keep my internals clear and know that
+    // everything pool `x` actualy connect `x`.
+    self.pool[to.string] = self.pool[to.string] || [];
+    self.pool[from.string].forEach(function each(connection) {
+      // Reset the Protocol parser's internals
+      connection.parser.reset();
+      self.pool[to.string].push(connection);
+    });
+
+    delete self.pool[from.string];
   });
 
   //
@@ -312,7 +409,7 @@ Memcached.prototype.reduce = function reduce(keys) {
     , "  hash = key.hash;"
     , "  key = key.key;"
     , "}"
-    , "if ('function' ==== value) {"
+    , "if ('function' === value) {"
     , "  callback = value;"
     , "  value = 0;"
     , "}"
@@ -368,7 +465,7 @@ Memcached.prototype.reduce = function reduce(keys) {
   Memcached.prototype[api] = new Function('callback', [
       "var completed = 0, responses = {}, length = this.length, error;"
     , "this.servers.forEach(function servers(server) {"
-    , "  this.send(hash, '"+ command +", undefined, function done(err, res) {"
+    , "  this.send(hash, '"+ command +"', undefined, function done(err, res) {"
     , "    if (err) {"
     , "      callback(err);"
     , "      return callback = function () {};"
@@ -402,87 +499,6 @@ Memcached.prototype.end = function end() {
 
     jackpot.end();
   }, this);
-};
-
-/**
- * Parse the server argument to a uniform format.
- *
- * @param {Mixed} args
- * @returns {Object}
- * @api private
- */
-Memcached.parse = function parse(args) {
-  var servers;
-
-  if (arguments.length > 1) {
-    servers = Array.prototype.slice.call(arguments, 0).map(Memcached.address);
-  } else if (Array.isArray(args)) {
-    servers = args.map(Memcached.address);
-  } else if('object' === typeof args) {
-    servers = Object.keys(args).map(Memcached.address);
-  } else {
-    servers = [args].map(Memcached.address);
-  }
-
-  return {
-      servers: servers
-    , weights: 'object' === typeof args ? args : null
-    , regular: servers.map(function regular(server) {
-        return server.string;
-      })
-  };
-};
-
-/**
- * Transforms the server in to an Object containing the port number and the
- * hostname.
- *
- * @param {Mixed} server
- * @returns {Object}
- * @api private
- */
-Memcached.address = function address(server) {
-  if ('string' !== typeof server) {
-    server.string = server.host +':'+ server.port;
-    return server;
-  }
-
-  var pattern = server.split(':');
-
-  return {
-      host: pattern[0]
-    , port: +pattern[1]
-    , string: pattern
-  };
-};
-
-/**
- * Simple templating engine that we use to generate different function bodies.
- *
- * @param {String} str template
- * @param {Object} data optional data
- * @returns {Mixed} function if you don't supply it with data
- */
-Memcached.compile = function compile(args, str, data) {
-  data = data || {};
-
-  var compiler = new Function('locals',
-      'var p = []; function print(){ p.push.apply(p, arguments); };'
-    + 'with (locals) {'
-    + 'p.push(\''
-    + str
-        .replace(/[\r\t\n]/g, " ")
-        .split("<%").join("\t")
-        .replace(/((^|%>)[^\t]*)'/g, "$1\r")
-        .replace(/\t=(.*?)%>/g, "',$1,'")
-        .split("\t").join("');")
-        .split("%>").join("p.push('")
-        .split("\r").join("\\'")
-    + '\');}'
-    + 'return p.join("")'
-  );
-
-  return new Function(args, compiler(data));
 };
 
 //
