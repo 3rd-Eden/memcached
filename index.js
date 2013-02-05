@@ -422,27 +422,29 @@ Memcached.prototype.reduce = function reduce(keys) {
 });
 
 [
-    'set'
-  , 'add'
-  , 'cas'
-  , 'append'
-  , 'prepend'
-  , 'replace'
-].forEach(function compiling(command) {
-  var args = 'cas' === command
-    ? 'key, exptime, value, cas, callback'
-    : 'key, exptime, value, callback';
-
-  Memcached.prototype[command] = Memcached.compile(args, [
+    { command: 'set', args: 'key, value, exptime, callback' }
+  , { command: 'add', args: 'key, value, exptime, callback' }
+  , { command: 'cas', args: 'key, value, exptime, cas, callback' }
+  , { command: 'append', args: 'key, value, callback' }
+  , { command: 'prepend', args: 'key, value, callback'}
+  , { command: 'replace', args: 'key, value, callback' }
+].forEach(function compiling(details) {
+  Memcached.prototype[details.command] = Memcached.compile(details.args, [
       "var args = Array.prototype.slice.call(arguments, 0)"
-    , "  , callback = args.pop()"
-    , "  , key = args[0]"
-    , "  , exptime = args[1]"
-    , "  , value = args[2]"
     , "  , hash = key"
     , "  , flag = this.flagged || 0"
     , "  , bytes"
     , "  , type;"
+
+    , "callback = args.pop();"
+    , "key = args[0];"
+    , "value = args[1];"
+    , "<% if (~args.indexOf('cas')) { %>"
+    , "cas = args[2];"
+    , "exptime = args[3];"
+    , "<% } else { %>"
+    , "exptime = args[2];"
+    , "<% } %>"
 
     // Check if we received an object instead of plain arguments
     , "if ('object' === typeof key) {"
@@ -450,18 +452,26 @@ Memcached.prototype.reduce = function reduce(keys) {
     , "  exptime = key.expiration || key.expire;"
     , "  value = key.value;"
     , "  flag = key.flag || flag;"
+    , "  <% if (~args.indexOf('cas')) { %>"
+    , "  cas = key.cas;"
+    , "  <% } %>"
     , "  key = key.key;"
     , "}"
 
-    // No value, so there's expiration argument missing
-    , "if (!value) {"
-    , "  exptime = 0;"
+    , "if ('function' !== typeof callback) {"
+    , "  <% if (~args.indexOf('cas')) { %>"
+    , "  cas = callback;"
+    , "  callback = undefined;"
+    , "  <% } else { %>"
+    , "  exptime = callback;"
+    , "  callback = undefined;"
+    , "  <% } %>"
     , "}"
 
-    , "if ('function' !== typeof callback) {"
-    // @TODO handle CAS
-    , "  value = callback;"
-    , "  callback = undefined;"
+    // No value, so there's expiration argument missing
+    // @TODO make sure that this works for CAS calls
+    , "if (!exptime) {"
+    , "  exptime = 0;"
     , "}"
 
     // Check if we need to apply some default flags to this
@@ -484,9 +494,13 @@ Memcached.prototype.reduce = function reduce(keys) {
 
     , "this.send("
     , "    hash"
-    , "  , '"+ command +" '+ key +' '+ flag +' '+ exptime +' '+ bytes"
+    , "  <% if (~args.indexOf('exptime')) { %>"
+    , "  , '<%= command %> '+ key +' '+ flag +' '+ exptime +' '+ bytes"
+    , "  <% } else { %>"
+    , "  , '<%= command %> '+ key +' '+ bytes"
+    , "  <% } %>"
     , "  , value, callback);"
-  ].join(''), { command: command });
+  ].join(''), details);
 });
 
 [
