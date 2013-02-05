@@ -227,7 +227,9 @@ Memcached.prototype.select = function select(address, callback) {
 
 Memcached.prototype.factory = function factory(address) {
   var parser = new Parser()
-    , connection = net.connect() // @TODO actually connect
+    , connection = address.path
+        ? net.connect(address.path)
+        : net.connect(address.port, address.host)
     , queue = {}
     , undefined
     , self = this;
@@ -319,7 +321,9 @@ Memcached.prototype.factory = function factory(address) {
 
   // @TODO figure out how we are going to handle the connection pool here, we
   // don't really want to handle it our selfs...
-  this.failover.connect(connection).pipe(parser);
+  //this.failover.connect(connection).pipe(parser);
+  connection.pipe(parser);
+
   return connection;
 };
 
@@ -352,7 +356,7 @@ Memcached.prototype.send = function send(hash, command, data, callback, server) 
     // Add the data frame if we need to
     if (data) command += data + '\r\n';
 
-    if (callback) connection.callbacks(callback);
+    if (callback) connection.callbacks.unshift(callback);
     connection.write(command);
   });
 };
@@ -444,7 +448,7 @@ Memcached.prototype.reduce = function reduce(keys) {
     , "  }"
     , "}"
     , "value = value.toString();"
-    , "bytes = Buffer.bytelength(value);"
+    , "bytes = Buffer.byteLength(value);"
     , "this.send("
     , "    hash"
     , "  , '"+ command +" '+ key +' '+ flag +' '+ exptime +' '+ bytes"
