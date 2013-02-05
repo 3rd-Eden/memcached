@@ -230,9 +230,9 @@ Memcached.prototype.factory = function factory(address) {
     , connection = address.path
         ? net.connect(address.path)
         : net.connect(address.port, address.host)
+    , self = this
     , queue = {}
-    , undefined
-    , self = this;
+    , undefined;
 
   /**
    * Parse JSON flags.
@@ -434,8 +434,38 @@ Memcached.prototype.reduce = function reduce(keys) {
     : 'key, exptime, value, callback';
 
   Memcached.prototype[command] = Memcached.compile(args, [
-      "var type = typeof value, flag = this.flagged || 0, bytes, hash;"
-    , "" // @TODO hash object stuff
+      "var args = Array.prototype.slice.call(arguments, 0)"
+    , "  , callback = args.pop()"
+    , "  , key = args[0]"
+    , "  , exptime = args[1]"
+    , "  , value = args[2]"
+    , "  , hash = key"
+    , "  , flag = this.flagged || 0"
+    , "  , bytes"
+    , "  , type;"
+
+    // Check if we received an object instead of plain arguments
+    , "if ('object' === typeof key) {"
+    , "  hash = key.hash || key.key;"
+    , "  exptime = key.expiration || key.expire;"
+    , "  value = key.value;"
+    , "  flag = key.flag || flag;"
+    , "  key = key.key;"
+    , "}"
+
+    // No value, so there's expiration argument missing
+    , "if (!value) {"
+    , "  exptime = 0;"
+    , "}"
+
+    , "if ('function' !== typeof callback) {"
+    // @TODO handle CAS
+    , "  value = callback;"
+    , "  callback = undefined;"
+    , "}"
+
+    // Check if we need to apply some default flags to this
+    , "type = typeof value;"
     , "if (!flag) {"
     , "  if (Buffer.isBuffer(value)) {"
     , "    value = value.toString('binary');"
@@ -447,8 +477,11 @@ Memcached.prototype.reduce = function reduce(keys) {
     , "    flag = 8;"
     , "  }"
     , "}"
+
+    // Correct set the shizzle
     , "value = value.toString();"
     , "bytes = Buffer.byteLength(value);"
+
     , "this.send("
     , "    hash"
     , "  , '"+ command +" '+ key +' '+ flag +' '+ exptime +' '+ bytes"
