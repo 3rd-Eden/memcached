@@ -6,7 +6,8 @@
 var Parser = require('memcached-stream').Parser
   , ConnectionPool = require('jackpot')
   , HashRing = require('hashring')
-  , Failover = require('failover');
+  , Failover = require('failover')
+  , parse = require('connection-parse');
 
 /**
  * Node's native modules.
@@ -15,7 +16,7 @@ var EventEmitter = require('events').EventEmitter
   , net = require('net');
 
 function Memcached(servers, opts) {
-  servers = Memcached.parse(servers);
+  servers = parse(servers);
   opts = opts || {};
 
   this.algorithm = 'crc32';                       // Default algorithm
@@ -38,7 +39,7 @@ function Memcached(servers, opts) {
     , opts.hashring || {}                         // Control the hashring
   );
 
-  var failovers = Memcached.parse(opts.failover || []).servers;
+  var failovers = parse(opts.failover || []).servers;
   this.failover = new Failover(
       failovers
     , opts.failover || {}
@@ -58,58 +59,6 @@ function Memcached(servers, opts) {
 }
 
 Memcached.prototype.__proto__ = EventEmitter.prototype;
-
-/**
- * Parse the server argument to a uniform format.
- *
- * @param {Mixed} args
- * @returns {Object}
- * @api private
- */
-Memcached.parse = function parse(args) {
-  var servers;
-
-  if (arguments.length > 1) {
-    servers = Array.prototype.slice.call(arguments, 0).map(Memcached.address);
-  } else if (Array.isArray(args)) {
-    servers = args.map(Memcached.address);
-  } else if('object' === typeof args) {
-    servers = Object.keys(args).map(Memcached.address);
-  } else {
-    servers = [args].map(Memcached.address);
-  }
-
-  return {
-      servers: servers
-    , weights: 'object' === typeof args ? args : null
-    , regular: servers.map(function regular(server) {
-        return server.string;
-      })
-  };
-};
-
-/**
- * Transforms the server in to an Object containing the port number and the
- * hostname.
- *
- * @param {Mixed} server
- * @returns {Object}
- * @api private
- */
-Memcached.address = function address(server) {
-  if ('string' !== typeof server) {
-    server.string = server.host +':'+ server.port;
-    return server;
-  }
-
-  var pattern = server.split(':');
-
-  return {
-      host: pattern[0]
-    , port: +pattern[1]
-    , string: pattern
-  };
-};
 
 /**
  * Simple templating engine that we use to generate different function bodies.

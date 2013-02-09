@@ -26,7 +26,8 @@
     "failover": "0.0.x",
     "hashring": "0.0.x",
     "jackpot": "0.0.x",
-    "memcached-stream": "0.0.x"
+    "memcached-stream": "0.0.x",
+    "connection-parse": "0.0.x"
   },
   "devDependencies": {
     "mocha": "1.8.x",
