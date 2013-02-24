@@ -5,6 +5,8 @@
 - Arek Flinik
 - Arnout Kazemier
 - Jan Krems
+- Jason Pearlman
+- Joseph Mordetsky
 - Near Privman
 - Nebojsa Sabovic
 - Ron Korving
