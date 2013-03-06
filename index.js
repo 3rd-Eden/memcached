@@ -15,11 +15,18 @@ var Parser = require('memcached-stream').Parser
 var EventEmitter = require('events').EventEmitter
   , net = require('net');
 
+/**
+ *
+ * @constructor
+ * @param {Mixed} servers A list of memcached servers
+ * @param {Object} opts Configuration
+ * @api public
+ */
 function Memcached(servers, opts) {
   servers = parse(servers);
   opts = opts || {};
 
-  this.algorithm = 'crc32';                       // Default algorithm
+  this.algorithm = 'md5';                         // Default algorithm
   this.size = 20;                                 // Connections per server
   this.timeout = 0;                               // Inactivity timeout
   this.debug = false;                             // Emit extra debug information
@@ -174,6 +181,17 @@ Memcached.prototype.select = function select(address, callback) {
   return this;
 };
 
+/**
+ * Memcached connection factory. This is called for each connections, we should
+ * setup our:
+ *
+ * - Failover
+ * - Parser
+ *
+ * Before we are active.
+ *
+ * @api private
+ */
 Memcached.prototype.factory = function factory(address) {
   var parser = new Parser()
     , connection = address.path
@@ -186,6 +204,7 @@ Memcached.prototype.factory = function factory(address) {
   /**
    * Parse JSON flags.
    *
+   * @TODO handle parse failures, maybe wrap
    * @api private
    */
   parser.flag(2, function parse(value) {
