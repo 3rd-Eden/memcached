@@ -1,3 +1,7 @@
+0.2.2
+ - Support for touch command #86
+ - Fix for chunked responses from the server #84
+
 0.2.1
  - Supports for a queued callback limit so it would crash the process when we queue
    to much callbacks. #81
