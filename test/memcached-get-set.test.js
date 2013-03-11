@@ -337,7 +337,7 @@ describe("Memcached GET SET", function() {
   /**
    * Set maximum amount of data (1MB), should trigger error, not crash.
    */
-  it("set maximum data and check for correct error handeling", function(done) {
+  it("set maximum data and check for correct error handling", function(done) {
     var memcached = new Memcached(common.servers.single)
         , message = fs.readFileSync(__dirname + '/fixtures/lipsum.txt').toString()
         , testnr = ++global.testnumbers
