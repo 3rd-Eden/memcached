@@ -10,7 +10,7 @@ var assert = require('assert')
 global.testnumbers = global.testnumbers || +(Math.random(10) * 1000000).toFixed();
 
 /**
- * Expresso test suite for all `touch` related
+ * Expresso test suite for all `parser` related
  * memcached commands
  */
 describe("Memcached parser", function() {
