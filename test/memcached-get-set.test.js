@@ -335,6 +335,27 @@ describe("Memcached GET SET", function() {
   });
 
   /**
+   * Set maximum amount of data (1MB), should trigger error, not crash.
+   */
+  it("set maximum data and check for correct error handling", function(done) {
+    var memcached = new Memcached(common.servers.single)
+        , message = fs.readFileSync(__dirname + '/fixtures/lipsum.txt').toString()
+        , testnr = ++global.testnumbers
+        , callbacks = 0;
+
+      memcached.set("test:" + testnr, new Array(100).join(message), 1000, function(error, ok){
+        ++callbacks;
+
+        assert.equal(error, 'Error: The length of the value is greater than 1048576');
+        ok.should.be.false;
+
+        memcached.end(); // close connections
+        assert.equal(callbacks, 1);
+        done();
+      });
+  });
+
+  /**
    * Not only small strings, but also large strings should be processed
    * without any issues.
    */
