@@ -65,4 +65,37 @@ describe("Memcached tests with Namespaces", function() {
       });
     });
   });
+  
+  it("set, set, and multiget with custom namespace", function(done) {
+    var memcached = new Memcached(common.servers.single, {namespace: 'mySegmentedMemcached:'})
+        , callbacks = 0;
+  
+    // Load two namespaced variables into memcached
+    memcached.set("test1", "test1answer", 1000, function(error, ok){
+      ++callbacks;
+  
+      assert.ok(!error);
+      ok.should.be.true;
+      
+      memcached.set("test2", "test2answer", 1000, function(error, ok){
+        ++callbacks;
+      
+        assert.ok(!error);
+        ok.should.be.true;
+  
+        memcached.get(["test1", "test2"], function(error, answer){
+          ++callbacks;
+          
+          assert.ok(typeof answer === 'object');
+          answer["test1"].should.eql("test1answer");
+          answer["test2"].should.eql("test2answer");
+          
+          memcached.end(); // close connections
+
+          assert.equal(callbacks, 3);
+          done();
+        });
+      });
+    });
+  });
 });
