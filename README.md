@@ -126,6 +126,252 @@ Memcached.config.poolSize = 25;
 
 ### Public methods
 
+#### memcached.touch(key, lifetime, callback);
+
+Touches the given key.
+
+**Arguments**
+
+`key`: **String** The key
+`lifetime`: **Number** After how long should the key expire.
+`callback`: **Function**
+
+```js
+memcached.touch('key', 10, function (err) {
+  // stuff
+});
+```
+
+#### memcached.get(key, callback);
+
+Get the value for the given key.
+
+**Arguments**
+
+`key`: **String**, the key
+`callback`: **Function**, the callback.
+
+```js
+memcached.get('foo', function (err, data) {
+  console.log(data);
+});
+```
+
+#### memcached.gets(key, callback);
+
+Get the value and the CAS id.
+
+**Arguments**
+
+`key`: **String**, the key
+`callback`: **Function**, the callback.
+
+```js
+memcached.gets('foo', function (err, data) {
+  console.log(data.foo);
+  console.log(data.cas);
+
+  // Please note that the data is stored under the name of the given key.
+});
+```
+
+#### memcached.getMulti(keys, callback);
+
+Retrieves a bunch of values from multiple keys.
+
+**Arguments**
+
+`keys`: **Array**, all the keys that needs to be fetched
+`callback`: **Function**, the callback.
+
+```js
+memcached.getMulti(['foo', 'bar'], function (err, data) {
+  console.log(data.foo);
+  console.log(data.bar);
+});
+```
+
+#### memcached.set(key, lifetime, value, callback);
+
+Stores a new value in Memcached.
+
+**Arguments**
+
+`key`: **String** the name of the key
+`lifetime`: **Number**, how long the data needs to be stored
+`value`: **Mixed** Either a buffer, JSON, number or string that you want to store.
+`callback`: **Function** the callback
+
+```js
+memcached.set('foo', 10, 'bar', function (err) {
+  // stuff
+});
+```
+
+#### memcached.replace(key, lifetime, value, callback);
+
+Replaces the value in memcached.
+
+**Arguments**
+
+`key`: **String** the name of the key
+`lifetime`: **Number**, how long the data needs to be replaced
+`value`: **Mixed** Either a buffer, JSON, number or string that you want to store.
+`callback`: **Function** the callback
+
+```js
+memcached.replaces('foo', 10, 'bar', function (err) {
+  // stuff
+});
+```
+
+#### memcached.add(key, lifetime, value, callback);
+
+Add the value, only if it's in memcached already.
+
+**Arguments**
+
+`key`: **String** the name of the key
+`lifetime`: **Number**, how long the data needs to be replaced
+`value`: **Mixed** Either a buffer, JSON, number or string that you want to store.
+`callback`: **Function** the callback
+
+```js
+memcached.add('foo', 10, 'bar', function (err) {
+  // stuff
+});
+```
+
+#### memcached.cas(key, value, cas, lifetime, callback);
+
+Add the value, only if it matches the given CAS value.
+
+**Arguments**
+
+`key`: **String** the name of the key
+`value`: **Mixed** Either a buffer, JSON, number or string that you want to store.
+`lifetime`: **Number**, how long the data needs to be replaced
+`cas`: **String** the CAS value
+`callback`: **Function** the callback
+
+```js
+memcached.gets('foo', function (err, data) {
+  memcached.cas('foo', 'bar', data.cas, 10, function (err) {
+    // stuff
+  });
+});
+```
+
+#### memcached.append(key, value, callback);
+
+Add the given value string to the value of an existing item.
+
+**Arguments**
+
+`key`: **String** the name of the key
+`value`: **Mixed** Either a buffer, JSON, number or string that you want to store.
+`callback`: **Function** the callback
+
+```js
+memcached.append('foo', 'bar', function (err) {
+  // stuff
+});
+```
+
+#### memcached.prepend(key, value, callback);
+
+Add the given value string to the value of an existing item.
+
+**Arguments**
+
+`key`: **String** the name of the key
+`value`: **Mixed** Either a buffer, JSON, number or string that you want to store.
+`callback`: **Function** the callback
+
+```js
+memcached.preprend('foo', 'bar', function (err) {
+  // stuff
+});
+```
+
+#### memcached.incr(key, amount, callback);
+
+Increment a given key.
+
+**Arguments**
+
+`key`: **String** the name of the key
+`amount`: **Number** The incremention
+`callback`: **Function** the callback
+
+```js
+memcached.incr('foo', 10, function (err) {
+  // stuff
+});
+```
+
+#### memcached.decr(key, amount, callback);
+
+Decrement a given kehy.
+
+**Arguments**
+
+`key`: **String** the name of the key
+`amount`: **Number** The incremention
+`callback`: **Function** the callback
+
+```js
+memcached.incr('foo', 10, function (err) {
+  // stuff
+});
+```
+
+#### memcached.del(key, callback);
+
+Remove the key from memcached.
+
+**Arguments**
+
+`key`: **String** the name of the key
+`callback`: **Function** the callback
+
+```js
+memcached.del('foo', function (err) {
+  // stuff
+});
+```
+
+#### memcached.version(callback);
+
+Retrieves the version number of your server.
+
+#### memcached.flush(callback);
+
+Flushes the memcached server.
+
+#### memcached.stats(callback);
+
+Retrieves stats from your memcached server.
+
+#### memcached.settings(callback);
+
+Retrieves your `stats settings`.
+
+#### memcached.slabs(callback);
+
+Retrieves `stats slabs` information.
+
+#### memcached.items(callback);
+
+Retrieves `stats items` information.
+
+#### memcached.cachedump(server, slabid, number, callback);
+
+Inspect cache, see examples for a detailed explaination.
+
+#### memcached.end();
+
+Closes all active memcached connections.
 
 ### Private methods
 The following methods are intended for private usage:
@@ -154,6 +400,7 @@ memcached.connect( '192.168.0.103:11212', function( err, conn ){
 ```
 
 ---------------------------------------
+
 #### .multi
 A small wrapper function that makes it easier to query multiple Memcached
 servers. It will return the location for each key or the complete list of
