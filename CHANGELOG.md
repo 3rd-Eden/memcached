@@ -1,3 +1,8 @@
+0.2.3
+  - Added documentation for public api's
+  - new namespace option added that namespaces all your keys.
+  - minor parser fixes and some thrown errors.
+
 0.2.2
  - Support for touch command #86
  - Fix for chunked responses from the server #84
