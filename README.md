@@ -191,15 +191,15 @@ memcached.getMulti(['foo', 'bar'], function (err, data) {
 });
 ```
 
-#### memcached.set(key, lifetime, value, callback);
+#### memcached.set(key, value, lifetime, callback);
 
 Stores a new value in Memcached.
 
 **Arguments**
 
 `key`: **String** the name of the key
-`lifetime`: **Number**, how long the data needs to be stored
 `value`: **Mixed** Either a buffer, JSON, number or string that you want to store.
+`lifetime`: **Number**, how long the data needs to be stored
 `callback`: **Function** the callback
 
 ```js
@@ -208,15 +208,15 @@ memcached.set('foo', 10, 'bar', function (err) {
 });
 ```
 
-#### memcached.replace(key, lifetime, value, callback);
+#### memcached.replace(key, value, lifetime, callback);
 
 Replaces the value in memcached.
 
 **Arguments**
 
 `key`: **String** the name of the key
-`lifetime`: **Number**, how long the data needs to be replaced
 `value`: **Mixed** Either a buffer, JSON, number or string that you want to store.
+`lifetime`: **Number**, how long the data needs to be replaced
 `callback`: **Function** the callback
 
 ```js
@@ -225,19 +225,19 @@ memcached.replaces('foo', 10, 'bar', function (err) {
 });
 ```
 
-#### memcached.add(key, lifetime, value, callback);
+#### memcached.add(key, value, lifetime, callback);
 
 Add the value, only if it's in memcached already.
 
 **Arguments**
 
 `key`: **String** the name of the key
-`lifetime`: **Number**, how long the data needs to be replaced
 `value`: **Mixed** Either a buffer, JSON, number or string that you want to store.
+`lifetime`: **Number**, how long the data needs to be replaced
 `callback`: **Function** the callback
 
 ```js
-memcached.add('foo', 10, 'bar', function (err) {
+memcached.add('foo', 'bar', 10, function (err) {
   // stuff
 });
 ```
