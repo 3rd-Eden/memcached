@@ -33,4 +33,44 @@ describe('Memcached connections', function () {
       done();
     });
   });
+  it('should remove a failed server', function(done) {
+    var memcached = new Memcached('127.0.1:1234', {
+      timeout: 1000,
+      retries: 3,
+      retry: 100,
+      remove: true });
+
+    this.timeout(60000);
+
+    memcached.get('idontcare', function (err) {
+        function noserver() {
+          memcached.get('idontcare', function(err) {
+              throw err;
+          });
+        };
+        assert.throws(noserver, /Server not available/);
+        memcached.end();
+        done();
+    });
+  });
+  it('should rebalance to remaining healthy server', function(done) {
+    var memcached = new Memcached(['127.0.1:1234', common.servers.single], {
+      timeout: 1000,
+      retries: 3,
+      retry: 100,
+      remove: true,
+      redundancy: true });
+
+    this.timeout(60000);
+
+    // 'a' goes to fake server. first request will cause server to be removed
+    memcached.get('a', function (err) {
+      // second request should be rebalanced to healthy server
+      memcached.get('a', function (err) {
+        assert.ifError(err);
+        memcached.end();
+        done();
+      });
+    });
+  });
 });
