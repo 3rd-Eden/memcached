@@ -16,10 +16,11 @@ var EventEmitter = require('events').EventEmitter
   , net = require('net');
 
 /**
+ * A Memcached-client.
  *
  * @constructor
- * @param {Mixed} servers A list of memcached servers
- * @param {Object} opts Configuration
+ * @param {Mixed} servers A list of memcached servers.
+ * @param {Object} opts Configuration.
  * @api public
  */
 function Memcached(servers, opts) {
@@ -362,10 +363,15 @@ Memcached.prototype.reduce = function reduce(keys) {
 ].forEach(function compiling(command) {
   Memcached.prototype[command] = new Function('key, callback', [
       "var hash = key;"
+
+      // If an object is supplied the user wants to be in control on how
+      // a server is selected, for example to load a set of data from the same
+      // server to improve performance.
     , "if ('object' === typeof key) {"
     , "  hash = key.hash;"
     , "  key = key.key;"
     , "}"
+
     , "this.send(hash, '"+ command +" '+key, undefined, callback);"
   ].join(''));
 });
@@ -377,10 +383,15 @@ Memcached.prototype.reduce = function reduce(keys) {
 ].forEach(function compiling(command) {
   Memcached.prototype[command] = new Function('key, value, callback', [
       "var hash = key;"
+
+      // If an object is supplied the user wants to be in control on how
+      // a server is selected, for example to load a set of data from the same
+      // server to improve performance.
     , "if ('object' === typeof key) {"
     , "  hash = key.hash;"
     , "  key = key.key;"
     , "}"
+
     , "if ('function' === value) {"
     , "  callback = value;"
     , "  value = 0;"
@@ -404,9 +415,14 @@ Memcached.prototype.reduce = function reduce(keys) {
     , "  , bytes"
     , "  , type;"
 
+    // The last argument is always the callback.
     , "callback = args.pop();"
+
+    // The default argument order that applies for every command.
     , "key = args[0];"
     , "value = args[1];"
+
+    // The cas command receives an extra argument to set.
     , "<% if (~args.indexOf('cas')) { %>"
     , "cas = args[2];"
     , "exptime = args[3];"
@@ -414,15 +430,19 @@ Memcached.prototype.reduce = function reduce(keys) {
     , "exptime = args[2];"
     , "<% } %>"
 
-    // Check if we received an object instead of plain arguments
+    // If an object is supplied the user wants to be in control on how
+    // a server is selected, for example to load a set of data from the same
+    // server to improve performance.
     , "if ('object' === typeof key) {"
     , "  hash = key.hash || key.key;"
     , "  exptime = key.expiration || key.expire;"
     , "  value = key.value;"
     , "  flag = key.flag || flag;"
+
     , "  <% if (~args.indexOf('cas')) { %>"
     , "  cas = key.cas;"
     , "  <% } %>"
+
     , "  key = key.key;"
     , "}"
 
@@ -483,12 +503,16 @@ Memcached.prototype.reduce = function reduce(keys) {
 
   Memcached.prototype[api] = new Function('callback', [
       "var completed = 0, responses = {}, length = this.length, error;"
+
+      // These commands should be executed and aggregated from every server as
+      // the stats affect every server.
     , "this.servers.forEach(function servers(server) {"
     , "  this.send(hash, '"+ command +"', undefined, function done(err, res) {"
     , "    if (err) {"
     , "      callback(err);"
     , "      return callback = function () {};"
     , "    }"
+
     , "    responses[server.string] = res;"
     , "    if (++completed !== length) return;"
     , "    callback(undefined, responses);"
