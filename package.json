@@ -24,13 +24,13 @@
   "license": "MIT",
   "dependencies": {
     "failover": "0.0.x",
-    "hashring": "0.0.x",
+    "hashring": "1.0.x",
     "jackpot": "0.0.x",
     "memcached-stream": "0.0.x",
     "connection-parse": "0.0.x"
   },
   "devDependencies": {
-    "mocha": "1.8.x",
-    "chai": "1.4.x"
+    "mocha": "1.12.x",
+    "chai": "1.7.x"
   }
 }
