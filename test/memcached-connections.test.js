@@ -73,4 +73,26 @@ describe('Memcached connections', function () {
       });
     });
   });
+  it('should not schedule to reconnect if already scheduled', function(done) {
+    var memcached = new Memcached('127.0.1:1234', {
+      retries: 3,
+      remove: false,
+      retry: 0,
+      reconnect: 100 })
+    , reconnectionAttempts = 0;
+
+    this.timeout(60000);
+
+    memcached.on('reconnecting', function(details) {
+      reconnectionAttempts++;
+    });
+
+    memcached.get('idontcare', function (err) {
+      setTimeout(function() {
+        assert.deepEqual(reconnectionAttempts, 1);
+          memcached.end();
+          done();
+      }, 1000);
+    });
+  });
 });
