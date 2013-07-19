@@ -1,17 +1,11 @@
 'use strict';
 
-/**
- * Custom modules.
- */
 var Parser = require('memcached-stream').Parser
+  , parse = require('connection-parse');
   , ConnectionPool = require('jackpot')
   , HashRing = require('hashring')
   , Failover = require('failover')
-  , parse = require('connection-parse');
 
-/**
- * Node's native modules.
- */
 var EventEmitter = require('events').EventEmitter
   , net = require('net');
 
@@ -27,24 +21,24 @@ function Memcached(servers, opts) {
   servers = parse(servers);
   opts = opts || {};
 
-  this.algorithm = 'md5';                         // Default algorithm
-  this.size = 20;                                 // Connections per server
-  this.timeout = 0;                               // Inactivity timeout
-  this.debug = false;                             // Emit extra debug information
+  this.algorithm = 'md5';                         // Default algorithm.
+  this.size = 20;                                 // Connections per server.
+  this.timeout = 0;                               // Inactivity timeout.
+  this.debug = false;                             // Emit extra debug information.
 
-  this.strict = false;                            // Strict Mode, validate everything
-  this.maxKeySize = 251;                          // Maximum length of a key
-  this.maxExpiration = 2592000;                   // Maximum expiration duration
-  this.maxValue = 1048576;                        // Maximum bytelength of a value
+  this.strict = false;                            // Strict Mode, validate everything.
+  this.maxKeySize = 251;                          // Maximum length of a key.
+  this.maxExpiration = 2592000;                   // Maximum expiration duration.
+  this.maxValue = 1048576;                        // Maximum byte length of a value.
 
   Object.keys(opts).forEach(function setup(key) {
     this[key] = opts[key];
   }, this);
 
   this.ring = opts.ring || new HashRing(
-      servers.weights || servers.regular          // Default to weighted servers
-    , this.algorithm                              // Algorithm used for hasing
-    , opts.hashring || {}                         // Control the hashring
+      servers.weights || servers.regular          // Default to weighted servers.
+    , this.algorithm                              // Algorithm used for hashing.
+    , opts.hashring || {}                         // Control the hashring.
   );
 
   var failovers = parse(opts.failover || []).servers;
@@ -60,7 +54,7 @@ function Memcached(servers, opts) {
   this.addresses = Object.create(null);
   this.pool = Object.create(null);
 
-  // Fill up our addresses hash
+  // Fill up our addresses hash.
   this.servers.concat(failovers).forEach(function servers(server) {
     this.addresses[server.string] = server;
   }, this);
@@ -69,11 +63,13 @@ function Memcached(servers, opts) {
 Memcached.prototype.__proto__ = EventEmitter.prototype;
 
 /**
- * Simple templating engine that we use to generate different function bodies.
+ * Simple template engine that we use to generate different function bodies.
  *
- * @param {String} str template
- * @param {Object} data optional data
- * @returns {Mixed} function if you don't supply it with data
+ * @param {String} args The arguments for this function template.
+ * @param {String} str The actual function template.
+ * @param {Object} data Data for the function compiler.
+ * @returns {Function} The compiled function.
+ * @api private
  */
 Memcached.compile = function compile(args, str, data) {
   data = data || {};
@@ -100,7 +96,7 @@ Memcached.compile = function compile(args, str, data) {
 };
 
 /**
- * Configure the Memcached Client. Start preparing for failover
+ * Configure the Memcached Client. Start preparing for fail over.
  *
  * @api private
  */
@@ -108,20 +104,22 @@ Memcached.prototype.configure = function configure() {
   var self = this;
 
   //
-  // A Memcached server has become unresponsive and we had to failover to
+  // A Memcached server has become unresponsive and we had to fail over to
   // different server.
   //
   this.failover.on('failover', function failover(from, to, connection) {
     self.hashring.replace(from.string, to.string);
 
-    // As a failover occured, we need to update our internal pool as we changed
+    //
+    // As a fail over occurred, we need to update our internal pool as we changed
     // our hashring above, so it will point to the new server location. Normally
     // you wouldn't need to change your hashring and update the pool to reflect
     // these changes, but I like to keep my internals clear and know that
-    // everything pool `x` actualy connect `x`.
+    // everything pool `x` actually connect `x`.
+    //
     self.pool[to.string] = self.pool[to.string] || [];
     self.pool[from.string].forEach(function each(connection) {
-      // Reset the Protocol parser's internals
+      // Reset the Protocol parser's internals.
       connection.parser.reset();
       self.pool[to.string].push(connection);
     });
@@ -130,7 +128,7 @@ Memcached.prototype.configure = function configure() {
   });
 
   //
-  // A Memcached server has been unresponsive, but we don't have any failover
+  // A Memcached server has been unresponsive, but we don't have any fail over
   // servers left or in place. Mark it as dead and remove it from the pool
   this.failover.on('death', function death(server) {
     var jackpot = self.pool[server.string];
@@ -139,17 +137,19 @@ Memcached.prototype.configure = function configure() {
     // memory.
     if (jackpot) jackpot.end();
 
-    // Remove the server from the HashRing, as the server seems to have died
+    // Remove the server from the hashring, as the server seems to have died
     // off.
     self.hashring.remove(server.string);
   });
+
+  return this;
 };
 
 /**
  * Select a server from the pool.
  *
- * @param {String} address
- * @param {Function} callback
+ * @param {String} address The server address we need a TCP connection for.
+ * @param {Function} callback Called when we have a working connection.
  * @api private
  */
 Memcached.prototype.select = function select(address, callback) {
@@ -213,7 +213,7 @@ Memcached.prototype.factory = function factory(address) {
   });
 
   /**
-   * Parse Binary flags
+   * Parse Binary flags.
    *
    * @api private
    */
@@ -222,7 +222,7 @@ Memcached.prototype.factory = function factory(address) {
   });
 
   /**
-   * Parser Number flags
+   * Parser Number flags.
    *
    * @api private
    */
@@ -280,9 +280,9 @@ Memcached.prototype.factory = function factory(address) {
   });
 
   // Configure the stream.
-  connection.setEncoding('utf-8');        // Required for the parser
-  connection.setTimeout(this.timeout);    // To keep the connections low
-  connection.setNoDelay(true);            // No Nagel algorithm
+  connection.setEncoding('utf-8');        // Required for the parser to fix utf-8.
+  connection.setTimeout(this.timeout);    // To keep the connections low.
+  connection.setNoDelay(true);            // No Nagel algorithm.
 
   // Add addition properties to the connection for callback handling etc.
   connection.callbacks = [];
@@ -299,10 +299,11 @@ Memcached.prototype.factory = function factory(address) {
 /**
  * Write a response to the memcached server.
  *
- * @param {String} hash either key or custom hash to fetch from hashring
- * @param {String} command command string for the server
- * @param {String|undefined} data optional data fragment
- * @param {Function} callback optional callback
+ * @param {String} hash Either key or custom hash to fetch from hashring.
+ * @param {String} command Command string for the server.
+ * @param {String|undefined} data Optional data fragment.
+ * @param {Function} callback Optional callback.
+ * @api private
  */
 Memcached.prototype.send = function send(hash, command, data, callback, server) {
   if (!server) {
@@ -318,7 +319,8 @@ Memcached.prototype.send = function send(hash, command, data, callback, server) 
     // Complete the command string, if we don't have a callback we assume that
     // the user wanted to do a fire and forget. To make this faster, we are just
     // gonna append noreply to the command so we don't receive a server
-    // response. Please note that this can cause errors..
+    // response. Please note that this can cause errors to bubble up and they
+    // can put the parser in to an unknown state.
     if (!callback) command += ' noreply';
     command += '\r\n';
 
@@ -332,10 +334,11 @@ Memcached.prototype.send = function send(hash, command, data, callback, server) 
 
 /**
  * Reduces a bunch of keys to a server mapping so we can fetch the keys in
- * paralel from different servers.
+ * parallel from different servers.
  *
- * @param {Array} keysA
+ * @param {Array} keys The keys that need to be reduced to server addresses
  * @returns {Object} servers locations
+ * @api private
  */
 Memcached.prototype.reduce = function reduce(keys) {
   var ring = this.hashring;
@@ -352,8 +355,8 @@ Memcached.prototype.reduce = function reduce(keys) {
 
 /* * * * * * * * * * * * * * * * * * § MAGIC § * * * * * * * * * * * * * * * * * */
 /* THIS IS WHERE ALL THE MAGIC HAPPENS, IT'S SO MAGICAL THAT I'M GOING TO WRITE  */
-/*     ALL OF THIS IN CAPSLOCK. WE ARE GOING TO GENERATE NEW FUNCTIONS USING     */
-/*                A FUNCTION TEMPLATE AND BOOM, LESS CODE.                       */
+/*     ALL OF THIS IN CAPS LOCK. WE ARE GOING TO GENERATE NEW FUNCTIONS USING    */
+/*        A FUNCTION TEMPLATE AND BOOM, LESS CODE AND HIGHER PERFORMANCE.        */
 /* * * * * * * * * * * * * * * * * * § MAGIC § * * * * * * * * * * * * * * * * * */
 
 [
@@ -422,7 +425,7 @@ Memcached.prototype.reduce = function reduce(keys) {
     , "key = args[0];"
     , "value = args[1];"
 
-    // The cas command receives an extra argument to set.
+    // The CAS command receives an extra argument to set.
     , "<% if (~args.indexOf('cas')) { %>"
     , "cas = args[2];"
     , "exptime = args[3];"
