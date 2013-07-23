@@ -98,8 +98,10 @@ formatted in an JavaScript `object`. They both use the same object structure:
   reconnect every x milliseconds.
 * `timeout`: *5000*, after x ms the server should send a timeout if we can't
   connect. This will also be used close the connection if we are idle.
-* `retries`: *5*, amount of tries before we mark the server as dead.
-* `retry`: *30000*, timeout between each retry in x milliseconds.
+* `retries`: *5*, How many times to retry socket allocation for given request
+* `failures`: *5*, Number of times a server may have issues before marked dead.
+* `retry`: *30000*, time to wait between failures before putting server back in
+  service.
 * `remove`: *false*, when the server is marked as dead you can remove it from
   the pool so all other will receive the keys instead.
 * `failOverServers`: *undefined*, the ability use these servers as failover when
@@ -535,9 +537,9 @@ following 3 will always be present in all error events:
 The following properties depend on the type of event that is send. If we are
 still in our retry phase the details will also contain:
 
-* `retries`: the amount of retries left before we mark the server as dead.
-* `totalRetries`: the total amount of retries we did on this server, as when the
-  server has been reconnected after it's dead the `retries` will be rest to
+* `failures`: the amount of failures left before we mark the server as dead.
+* `totalFailures`: the total amount of failures that occurred on this server, as when the
+  server has been reconnected after it's dead the `failures` will be rest to
   defaults and messages will be removed.
 
 If the server is dead these details will be added:
