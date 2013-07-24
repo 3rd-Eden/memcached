@@ -75,4 +75,39 @@ describe('Memcached connections', function () {
       });
     });
   });
+  it('should properly schedule failed server retries', function(done) {
+    var server = '127.0.0.1:1234';
+    var memcached = new Memcached(server, {
+      retries: 0,
+      failures: 5,
+      retry: 100 });
+
+    // First request will schedule a retry attempt, and lock scheduling
+    memcached.get('idontcare', function (err) {
+      assert.throws(function() { throw err }, /connect ECONNREFUSED/);
+      assert.deepEqual(memcached.issues[server].failures, 5);
+      assert.deepEqual(memcached.issues[server].locked, true);
+      assert.deepEqual(memcached.issues[server].failed, true);
+      // Immediate request should not decrement failures
+      memcached.get('idontcare', function(err) {
+        assert.throws(function() { throw err }, /Server not available/);
+        assert.deepEqual(memcached.issues[server].failures, 5);
+      assert.deepEqual(memcached.issues[server].locked, true);
+      assert.deepEqual(memcached.issues[server].failed, true);
+        // Once `retry` time has passed, failures should decrement by one
+        setTimeout(function() {
+          // Server should be back in action
+          assert.deepEqual(memcached.issues[server].locked, false);
+          assert.deepEqual(memcached.issues[server].failed, false);
+          memcached.get('idontcare', function(err) {
+            // Server should be marked healthy again, though we'll get this error
+            assert.throws(function() { throw err }, /connect ECONNREFUSED/);
+            assert.deepEqual(memcached.issues[server].failures, 4);
+            memcached.end();
+            done();
+          });
+        }, 100); // `retry` is 100 so wait 100
+      });
+    });
+  });
 });
