@@ -139,4 +139,42 @@ describe('Memcached connections', function () {
       });
     });
   });
+  it('should reset failures after reconnecting to failed server', function(done) {
+    var server = '127.0.0.1:1234'
+    , memcached = new Memcached(server, {
+      retries: 0,
+      minTimeout: 0,
+      maxTimeout: 100,
+      failures: 1,
+      retry: 1,
+      reconnect: 100 })
+
+    this.timeout(60000);
+
+    // First request will mark server failed
+    memcached.get('idontcare', function(err) {
+      assert.throws(function() { throw err }, /connect ECONNREFUSED/);
+      setTimeout(function() {
+        // Second request will mark server dead
+        memcached.get('idontcare', function(err) {
+          assert.throws(function() { throw err }, /connect ECONNREFUSED/);
+            // Third request should find no servers
+            memcached.get('idontcare', function(err) {
+            assert.throws(function() { throw err }, /Server not available/);
+              // Give enough time for server to reconnect
+              setTimeout(function() {
+                // Server should be reconnected, but expect ECONNREFUSED
+                memcached.get('idontcare', function(err) {
+                  assert.throws(function() { throw err }, /connect ECONNREFUSED/);
+                  assert.deepEqual(memcached.issues[server].failures,
+                    memcached.issues[server].config.failures);
+                  memcached.end();
+                  done();
+                });
+              }, 110);
+            });
+          });
+      },10); // Make sure `retry`, which is immediate, has passed
+    });
+  });
 });
