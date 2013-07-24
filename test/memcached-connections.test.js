@@ -36,7 +36,8 @@ describe('Memcached connections', function () {
   it('should remove a failed server', function(done) {
     var memcached = new Memcached('127.0.1:1234', {
       timeout: 1000,
-      retries: 3,
+      retries: 0,
+      failures: 0,
       retry: 100,
       remove: true });
 
@@ -56,7 +57,8 @@ describe('Memcached connections', function () {
   it('should rebalance to remaining healthy server', function(done) {
     var memcached = new Memcached(['127.0.1:1234', common.servers.single], {
       timeout: 1000,
-      retries: 3,
+      retries: 0,
+      failures: 0,
       retry: 100,
       remove: true,
       redundancy: true });
