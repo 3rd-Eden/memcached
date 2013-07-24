@@ -110,4 +110,33 @@ describe('Memcached connections', function () {
       });
     });
   });
+  it('should properly schedule server reconnection attempts', function(done) {
+    var server = '127.0.0.1:1234'
+    , memcached = new Memcached(server, {
+      retries: 3,
+      minTimeout: 0,
+      maxTimeout: 100,
+      failures: 0,
+      reconnect: 100 })
+    , reconnectAttempts = 0;
+
+    memcached.on('reconnecting', function() {
+      reconnectAttempts++;
+    });
+
+    // First request will mark server dead and schedule reconnect
+    memcached.get('idontcare', function (err) {
+      assert.throws(function() { throw err }, /connect ECONNREFUSED/);
+      // Second request should not schedule another reconnect
+      memcached.get('idontcare', function (err) {
+        assert.throws(function() { throw err }, /Server not available/);
+        // Allow enough time to pass for a connection retries to occur
+        setTimeout(function() {
+          assert.deepEqual(reconnectAttempts, 1);
+          memcached.end();
+          done();
+        }, 400);
+      });
+    });
+  });
 });
