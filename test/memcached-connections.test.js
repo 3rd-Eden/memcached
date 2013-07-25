@@ -8,7 +8,6 @@
 
 var assert = require('assert')
   , fs = require('fs')
-  , net = require('net')
   , common = require('./common')
   , Memcached = require('../');
 
@@ -178,53 +177,35 @@ describe('Memcached connections', function () {
       },10); // Make sure `retry`, which is immediate, has passed
     });
   });
-  it('should fire `failure` event when server removed and has no fallbacks', function(done) {
-    var connectionAttempOk = false
-      , mockSocket = null
-      , mock = net.createServer(function(socket) {
-          mockSocket = socket;
-          connectionAttempOk = true;
-        })
-      , memcached = new Memcached(['127.0.0.1:11219'], {
-          timeout: 3000,
-          idle: 1000,
-          retries: 0,
-          remove: true
-        })
-      , emittedErrors = [];
+  it('should return error on connection timeout', function(done) {
+    // Use a non routable IP
+    var server = '10.255.255.255:1234'
+    , memcached = new Memcached(server, {
+      retries: 0,
+      timeout: 100,
+      idle: 1000,
+      failures: 0 });
 
-    [
-      'issue',
-      'remove',
-      'reconnecting',
-      'reconnected',
-      'failure'
-    ].forEach(function(event) {
-      memcached.on(event, function() {
-        if (emittedErrors[event]) {
-          ++emittedErrors[event];
-        } else {
-          emittedErrors[event] = 1;
-        }
-      });
+    memcached.get('idontcare', function(err) {
+      assert.throws(function() { throw err }, /Stream connect timeout/);
+      memcached.end();
+      done();
     });
+  });
+  it('should remove connection when idle', function(done) {
+    var memcached = new Memcached(common.servers.single, {
+      retries: 0,
+      timeout: 100,
+      idle: 100,
+      failures: 0 });
 
-    mock.listen(11219, function() {
-      memcached.get('y', function(err) {
-        var events = Object.keys(emittedErrors);
-
-        // memcached instance must emit `remove` and `failure` events
-        assert.strictEqual(events.length, 2);
-        assert.ok(~events.indexOf('remove'));
-        assert.ok(~events.indexOf('failure'));
-        assert.ok(connectionAttempOk);
-        assert.strictEqual(err.message, 'Connection timeout');
-
+    memcached.get('idontcare', function(err) {
+      assert.deepEqual(memcached.connections[common.servers.single].pool.length, 1);
+      setTimeout(function() {
+        assert.deepEqual(memcached.connections[common.servers.single].pool.length, 0);
         memcached.end();
-        mockSocket.destroy();
-        mock.close();
         done();
-      });
+      }, 100);
     });
   });
 });
