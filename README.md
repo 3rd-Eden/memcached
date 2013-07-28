@@ -205,7 +205,7 @@ Stores a new value in Memcached.
 `callback`: **Function** the callback
 
 ```js
-memcached.set('foo', 10, 'bar', function (err) {
+memcached.set('foo', 'bar', 10, function (err) {
   // stuff
 });
 ```
@@ -222,7 +222,7 @@ Replaces the value in memcached.
 `callback`: **Function** the callback
 
 ```js
-memcached.replaces('foo', 10, 'bar', function (err) {
+memcached.replace('foo', 'bar', 10, function (err) {
   // stuff
 });
 ```
