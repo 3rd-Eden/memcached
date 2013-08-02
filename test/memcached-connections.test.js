@@ -154,6 +154,7 @@ describe('Memcached connections', function () {
     // First request will mark server failed
     memcached.get('idontcare', function(err) {
       assert.throws(function() { throw err }, /connect ECONNREFUSED/);
+      // Wait 10ms, server should be back online
       setTimeout(function() {
         // Second request will mark server dead
         memcached.get('idontcare', function(err) {
@@ -171,10 +172,10 @@ describe('Memcached connections', function () {
                   memcached.end();
                   done();
                 });
-              }, 110);
+              }, 150);
             });
           });
-      },10); // Make sure `retry`, which is immediate, has passed
+      },10);
     });
   });
   it('should return error on connection timeout', function(done) {
@@ -187,7 +188,7 @@ describe('Memcached connections', function () {
       failures: 0 });
 
     memcached.get('idontcare', function(err) {
-      assert.throws(function() { throw err }, /Stream connect timeout/);
+      assert.throws(function() { throw err }, /Timed out while trying to establish connection/);
       memcached.end();
       done();
     });
@@ -207,5 +208,26 @@ describe('Memcached connections', function () {
         done();
       }, 100);
     });
+  });
+  it('should remove server if error occurs after connection established', function(done) {
+    var memcached = new Memcached(common.servers.single, {
+      poolSize: 1,
+      retries: 0,
+      timeout: 1000,
+      idle: 5000,
+      failures: 0 });
+
+    // Should work fine
+    memcached.get('idontcare', function(err) {
+      assert.ifError(err);
+      // Fake an error on the connected socket which should mark server failed
+      var S = memcached.connections[common.servers.single].pool.pop();
+      S.emit('error', new Error('Dummy error'));
+      memcached.get('idontcare', function(err) {
+        assert.throws(function() { throw err; }, /Server not available/);
+        done();
+      });
+    });
+
   });
 });
