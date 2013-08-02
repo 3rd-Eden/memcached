@@ -35,7 +35,7 @@
     }
   , "dependencies": {
         "hashring": "0.0.x"
-      , "jackpot": ">=0.0.4"
+      , "jackpot": ">=0.0.6"
     }
   , "devDependencies": {
         "mocha": "*"
