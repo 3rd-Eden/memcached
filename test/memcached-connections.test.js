@@ -187,7 +187,7 @@ describe('Memcached connections', function () {
       failures: 0 });
 
     memcached.get('idontcare', function(err) {
-      assert.throws(function() { throw err }, /Stream connect timeout/);
+      assert.throws(function() { throw err }, /Timed out while trying to establish connection/);
       memcached.end();
       done();
     });
