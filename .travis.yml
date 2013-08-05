@@ -1,9 +1,10 @@
-# ensure that we only run ci test on the Node.js enabled servers
+# Ensure that we only run ci test on the Node.js enabled servers.
 language: node_js
 node_js:
-  - 0.8
+  - "0.8"
+  - "0.10"
 
-# create a travis enabled environment for the test suite to run in
+# Create a travis enabled environment for the test suite to run in.
 script: "make travisci"
 services: memcache
 
