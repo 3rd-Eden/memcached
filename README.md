@@ -1,4 +1,4 @@
-#Memcached [![Build Status](https://secure.travis-ci.org/3rd-Eden/node-memcached.png?branch=master)](http://travis-ci.org/3rd-Eden/node-memcached)
+# Memcached [![Build Status](https://secure.travis-ci.org/3rd-Eden/node-memcached.png?branch=master)](http://travis-ci.org/3rd-Eden/node-memcached)
 
 `memcached` is a fully featured Memcached client for Node.js. `memcached` is
 build with scaling, high availability and exceptional performance in mind. We
@@ -109,6 +109,7 @@ formatted in an JavaScript `object`. They both use the same object structure:
   an array of servers confirm the server_locations specification.
 * `keyCompression`: *true*, compress keys using md5 if they exceed the
   maxKeySize option.
+* `idle`: *5000*, the idle timeout for the connections.
 
 Example usage:
 
@@ -569,3 +570,16 @@ var memcached = new Memcached([ '192.168.0.102:11212', '192.168.0.103:11212' ]);
 memcached.on('failure', function( details ){ sys.error( "Server " + details.server + "went down due to: " + details.messages.join( '' ) ) });
 memcached.on('reconnecting', function( details ){ sys.debug( "Total downtime caused by server " + details.server + " :" + details.totalDownTime + "ms")});
 ```
+
+# Contributors
+
+This project wouldn't be possible without the hard work of our amazing
+contributors. See the contributors tab in Github for an up to date list of
+[contributors](/3rd-Eden/node-memcached/graphs/contributors).
+
+Thanks for all your hard work on this project!
+
+# License
+
+The driver is released under the MIT license. See the
+[LICENSE](/3rd-Eden/node-memcached/blob/master/LICENSE) for more information.
