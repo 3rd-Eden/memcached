@@ -228,6 +228,30 @@ describe('Memcached connections', function () {
         done();
       });
     });
+  });
+  it('should reset failures if all failures do not occur within failuresTimeout ms', function(done) {
+    var server = '10.255.255.255:1234'
+    , memcached = new Memcached(server, {
+      retries: 0,
+      timeout: 10,
+      idle: 1000,
+      retry: 10,
+      failures: 2,
+      failuresTimeout: 100 });
 
+    memcached.get('idontcare', function(err) {
+      assert.throws(function() { throw err }, /Timed out while trying to establish connection/);
+      // Allow `retry` ms to pass, which will decrement failures
+      setTimeout(function() {
+        assert.deepEqual(memcached.issues[server].failures, 1);
+        // Allow failuresTimeout ms to pass, which should reset failures
+        setTimeout(function() {
+          assert.deepEqual(memcached.issues[server].failures,
+            memcached.issues[server].config.failures);
+          memcached.end();
+          done();
+        }, 100);
+      }, 15);
+    });
   });
 });
