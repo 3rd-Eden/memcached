@@ -1,3 +1,7 @@
+### 0.2.5
+  - Fix for two bugs in Issuelog #137 and #141
+  - Add new `failuresTimeout` option
+
 ### 0.2.4
   - Tons of fixes have been made to the way we do error handling and failover,
     this includes better reconnect, server failure detection, timeout handling
