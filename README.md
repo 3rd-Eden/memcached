@@ -304,7 +304,7 @@ Increment a given key.
 **Arguments**
 
 `key`: **String** the name of the key
-`amount`: **Number** The incremention
+`amount`: **Number** The increment
 `callback`: **Function** the callback
 
 ```js
@@ -315,12 +315,12 @@ memcached.incr('foo', 10, function (err) {
 
 #### memcached.decr(key, amount, callback);
 
-Decrement a given kehy.
+Decrement a given key.
 
 **Arguments**
 
 `key`: **String** the name of the key
-`amount`: **Number** The incremention
+`amount`: **Number** The increment
 `callback`: **Function** the callback
 
 ```js
@@ -370,7 +370,7 @@ Retrieves `stats items` information.
 
 #### memcached.cachedump(server, slabid, number, callback);
 
-Inspect cache, see examples for a detailed explaination.
+Inspect cache, see examples for a detailed explanation.
 
 #### memcached.end();
 
