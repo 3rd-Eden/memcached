@@ -21,57 +21,57 @@ describe("Memcached GET SET", function() {
    */
   it("set and get a regular string", function(done) {
     var memcached = new Memcached(common.servers.single)
-        , message = common.alphabet(256)
-        , testnr = ++global.testnumbers
-        , callbacks = 0;
+      , message = common.alphabet(256)
+      , testnr = ++global.testnumbers
+      , callbacks = 0;
 
-      memcached.set("test:" + testnr, message, 1000, function(error, ok){
+    memcached.set("test:" + testnr, message, 1000, function(error, ok){
+      ++callbacks;
+
+      assert.ok(!error);
+      ok.should.be.true;
+
+      memcached.get("test:" + testnr, function(error, answer){
         ++callbacks;
 
         assert.ok(!error);
-        ok.should.be.true;
 
-        memcached.get("test:" + testnr, function(error, answer){
-          ++callbacks;
+        assert.ok(typeof answer === 'string');
+        answer.should.eql(message);
 
-          assert.ok(!error);
-
-          assert.ok(typeof answer === 'string');
-          answer.should.eql(message);
-
-          memcached.end(); // close connections
+        memcached.end(); // close connections
         assert.equal(callbacks, 2);
-          done();
+        done();
 
-        });
       });
+    });
   });
 
   it("set and get an empty string", function(done) {
     var memcached = new Memcached(common.servers.single)
-        , testnr = ++global.testnumbers
-        , callbacks = 0;
+      , testnr = ++global.testnumbers
+      , callbacks = 0;
 
-      memcached.set("test:" + testnr, "", 1000, function(error, ok){
+    memcached.set("test:" + testnr, "", 1000, function(error, ok){
+      ++callbacks;
+
+      assert.ok(!error);
+      ok.should.be.true;
+
+      memcached.get("test:" + testnr, function(error, answer){
         ++callbacks;
 
         assert.ok(!error);
-        ok.should.be.true;
 
-        memcached.get("test:" + testnr, function(error, answer){
-          ++callbacks;
+        assert.ok(typeof answer === 'string');
+        answer.should.eql("");
 
-          assert.ok(!error);
+        memcached.end(); // close connections
+        assert.equal(callbacks, 2);
+        done();
 
-          assert.ok(typeof answer === 'string');
-          answer.should.eql("");
-
-          memcached.end(); // close connections
-          assert.equal(callbacks, 2);
-          done();
-
-        });
       });
+    });
   });
 
   /**
@@ -80,30 +80,30 @@ describe("Memcached GET SET", function() {
    */
   it("set and get a JSON.stringify string", function(done) {
     var memcached = new Memcached(common.servers.single)
-        , message = JSON.stringify({numbers:common.numbers(256),alphabet:common.alphabet(256),dates:new Date(),arrays: [1,2,3, 'foo', 'bar']})
-        , testnr = ++global.testnumbers
-        , callbacks = 0;
+      , message = JSON.stringify({numbers:common.numbers(256),alphabet:common.alphabet(256),dates:new Date(),arrays: [1,2,3, 'foo', 'bar']})
+      , testnr = ++global.testnumbers
+      , callbacks = 0;
 
-      memcached.set("test:" + testnr, message, 1000, function(error, ok){
+    memcached.set("test:" + testnr, message, 1000, function(error, ok){
+      ++callbacks;
+
+      assert.ok(!error);
+      ok.should.be.true;
+
+      memcached.get("test:" + testnr, function(error, answer){
         ++callbacks;
 
         assert.ok(!error);
-        ok.should.be.true;
 
-        memcached.get("test:" + testnr, function(error, answer){
-          ++callbacks;
+        assert.ok(typeof answer === 'string');
+        answer.should.eql(message);
 
-          assert.ok(!error);
+        memcached.end(); // close connections
+        assert.equal(callbacks, 2);
+        done();
 
-          assert.ok(typeof answer === 'string');
-          answer.should.eql(message);
-
-          memcached.end(); // close connections
-          assert.equal(callbacks, 2);
-          done();
-
-        });
       });
+    });
   });
 
   /**
@@ -113,29 +113,29 @@ describe("Memcached GET SET", function() {
    */
   it("set and get a regular string", function(done) {
     var memcached = new Memcached(common.servers.single)
-        , message = 'привет мир, Memcached и nodejs для победы'
-        , testnr = ++global.testnumbers
-        , callbacks = 0;
+      , message = 'привет мир, Memcached и nodejs для победы'
+      , testnr = ++global.testnumbers
+      , callbacks = 0;
 
-      memcached.set("test:" + testnr, message, 1000, function(error, ok){
+    memcached.set("test:" + testnr, message, 1000, function(error, ok){
+      ++callbacks;
+
+      assert.ok(!error);
+      ok.should.be.true;
+
+      memcached.get("test:" + testnr, function(error, answer){
         ++callbacks;
 
         assert.ok(!error);
-        ok.should.be.true;
 
-        memcached.get("test:" + testnr, function(error, answer){
-          ++callbacks;
+        assert.ok(typeof answer === 'string');
+        answer.should.eql(message);
 
-          assert.ok(!error);
-
-          assert.ok(typeof answer === 'string');
-          answer.should.eql(message);
-
-          memcached.end(); // close connections
-          assert.equal(callbacks, 2);
-          done();
-        });
+        memcached.end(); // close connections
+        assert.equal(callbacks, 2);
+        done();
       });
+    });
   });
 
   /**
@@ -144,19 +144,19 @@ describe("Memcached GET SET", function() {
    */
   it("get a non existing key", function(done) {
     var memcached = new Memcached(common.servers.single)
-        , testnr = ++global.testnumbers
-        , callbacks = 0;
+      , testnr = ++global.testnumbers
+      , callbacks = 0;
 
-      memcached.get("test:" + testnr, function(error, answer){
-        ++callbacks;
+    memcached.get("test:" + testnr, function(error, answer){
+      ++callbacks;
 
-        assert.ok(!error);
-        answer.should.be.false;
+      assert.ok(!error);
+      answer.should.be.false;
 
-        memcached.end(); // close connections
-        assert.equal(callbacks, 1);
-        done();
-      });
+      memcached.end(); // close connections
+      assert.equal(callbacks, 1);
+      done();
+    });
   });
 
   /**
@@ -166,29 +166,29 @@ describe("Memcached GET SET", function() {
    */
   it("set and get a regular number", function(done) {
     var memcached = new Memcached(common.servers.single)
-        , message = common.numbers(256)
-        , testnr = ++global.testnumbers
-        , callbacks = 0;
+      , message = common.numbers(256)
+      , testnr = ++global.testnumbers
+      , callbacks = 0;
 
-      memcached.set("test:" + testnr, message, 1000, function(error, ok){
+    memcached.set("test:" + testnr, message, 1000, function(error, ok){
+      ++callbacks;
+
+      assert.ok(!error);
+      ok.should.be.true;
+
+      memcached.get("test:" + testnr, function(error, answer){
         ++callbacks;
 
         assert.ok(!error);
-        ok.should.be.true;
 
-        memcached.get("test:" + testnr, function(error, answer){
-          ++callbacks;
+        assert.ok(typeof answer === 'number');
+        answer.should.eql(message);
 
-          assert.ok(!error);
-
-          assert.ok(typeof answer === 'number');
-          answer.should.eql(message);
-
-          memcached.end(); // close connections
-          assert.equal(callbacks, 2);
-          done();
-        });
+        memcached.end(); // close connections
+        assert.equal(callbacks, 2);
+        done();
       });
+    });
   });
 
   /**
@@ -196,35 +196,34 @@ describe("Memcached GET SET", function() {
    * and be automagically JSON.parsed when they are retrieved.
    */
   it("set and get a object", function(done) {
-     var memcached = new Memcached(common.servers.single)
-        , message = {
-            numbers: common.numbers(256)
-          , alphabet: common.alphabet(256)
-          , dates: new Date()
-          , arrays: [1,2,3, 'foo', 'bar']
-          }
-        , testnr = ++global.testnumbers
-        , callbacks = 0;
+    var memcached = new Memcached(common.servers.single)
+      , message = {
+          numbers: common.numbers(256)
+        , alphabet: common.alphabet(256)
+        , dates: new Date()
+        , arrays: [1,2,3, 'foo', 'bar']
+      }
+      , testnr = ++global.testnumbers
+      , callbacks = 0;
 
-      memcached.set("test:" + testnr, message, 1000, function(error, ok){
+    memcached.set("test:" + testnr, message, 1000, function(error, ok){
+      ++callbacks;
+
+      assert.ok(!error);
+      ok.should.be.true;
+
+      memcached.get("test:" + testnr, function(error, answer){
         ++callbacks;
 
         assert.ok(!error);
-        ok.should.be.true;
 
-        memcached.get("test:" + testnr, function(error, answer){
-          ++callbacks;
-
-          assert.ok(!error);
-
-          assert.ok(!Array.isArray(answer) && typeof answer == 'object');
-          assert.ok(JSON.stringify(message) == JSON.stringify(answer));
-          memcached.end(); // close connections
-          assert.equal(callbacks, 2);
-          done();
-        });
+        assert.ok(!Array.isArray(answer) && typeof answer === 'object');
+        assert.ok(JSON.stringify(message) === JSON.stringify(answer));
+        memcached.end(); // close connections
+        assert.equal(callbacks, 2);
+        done();
       });
-
+    });
   });
 
   /**
@@ -233,41 +232,38 @@ describe("Memcached GET SET", function() {
    */
   it("set and get a array", function(done) {
     var memcached = new Memcached(common.servers.single)
-        , message = [
-            {
-              numbers: common.numbers(256)
-            , alphabet: common.alphabet(256)
-            , dates: new Date()
-            , arrays: [1,2,3, 'foo', 'bar']
-            }
-          , {
-              numbers: common.numbers(256)
-            , alphabet: common.alphabet(256)
-            , dates: new Date()
-            , arrays: [1,2,3, 'foo', 'bar']
-            }
-          ]
-        , testnr = ++global.testnumbers
-        , callbacks = 0;
+      , message = [{
+            numbers: common.numbers(256)
+          , alphabet: common.alphabet(256)
+          , dates: new Date()
+          , arrays: [1,2,3, 'foo', 'bar']
+        }, {
+            numbers: common.numbers(256)
+          , alphabet: common.alphabet(256)
+          , dates: new Date()
+          , arrays: [1,2,3, 'foo', 'bar']
+        }]
+      , testnr = ++global.testnumbers
+      , callbacks = 0;
 
-      memcached.set("test:" + testnr, message, 1000, function(error, ok){
+    memcached.set("test:" + testnr, message, 1000, function(error, ok){
+      ++callbacks;
+
+      assert.ok(!error);
+      ok.should.be.true;
+
+      memcached.get("test:" + testnr, function(error, answer){
         ++callbacks;
 
         assert.ok(!error);
-        ok.should.be.true;
 
-        memcached.get("test:" + testnr, function(error, answer){
-          ++callbacks;
-
-          assert.ok(!error);
-
-          assert.ok(Array.isArray(answer));
-          assert.ok(JSON.stringify(answer) == JSON.stringify(message));
-          memcached.end(); // close connections
-          assert.equal(callbacks, 2);
-          done();
-        });
+        assert.ok(Array.isArray(answer));
+        assert.ok(JSON.stringify(answer) === JSON.stringify(message));
+        memcached.end(); // close connections
+        assert.equal(callbacks, 2);
+        done();
       });
+    });
   });
 
   /**
@@ -279,26 +275,26 @@ describe("Memcached GET SET", function() {
    */
   it("set and get <buffers> with a binary image", function(done) {
     var memcached = new Memcached(common.servers.single)
-        , message = fs.readFileSync(__dirname + '/fixtures/hotchicks.jpg')
-        , testnr = ++global.testnumbers
-        , callbacks = 0;
+      , message = fs.readFileSync(__dirname + '/fixtures/hotchicks.jpg')
+      , testnr = ++global.testnumbers
+      , callbacks = 0;
 
-      memcached.set("test:" + testnr, message, 1000, function(error, ok){
+    memcached.set("test:" + testnr, message, 1000, function(error, ok){
+      ++callbacks;
+
+      assert.ok(!error);
+      ok.should.be.true;
+
+      memcached.get("test:" + testnr, function(error, answer){
         ++callbacks;
 
         assert.ok(!error);
-        ok.should.be.true;
-
-        memcached.get("test:" + testnr, function(error, answer){
-          ++callbacks;
-
-          assert.ok(!error);
-          assert.ok(answer.toString('binary') === message.toString('binary'));
-          memcached.end(); // close connections
-          assert.equal(callbacks, 2);
-          done();
-        });
+        assert.ok(answer.toString('binary') === message.toString('binary'));
+        memcached.end(); // close connections
+        assert.equal(callbacks, 2);
+        done();
       });
+    });
   });
 
   /**
@@ -311,27 +307,27 @@ describe("Memcached GET SET", function() {
    */
   it("set and get <buffers> with a binary text file", function(done) {
     var memcached = new Memcached(common.servers.single)
-        , message = fs.readFileSync(__dirname + '/fixtures/lipsum.txt')
-        , testnr = ++global.testnumbers
-        , callbacks = 0;
+      , message = fs.readFileSync(__dirname + '/fixtures/lipsum.txt')
+      , testnr = ++global.testnumbers
+      , callbacks = 0;
 
-      memcached.set("test:" + testnr, message, 1000, function(error, ok){
+    memcached.set("test:" + testnr, message, 1000, function(error, ok){
+      ++callbacks;
+
+      assert.ok(!error);
+      ok.should.be.true;
+
+      memcached.get("test:" + testnr, function(error, answer){
         ++callbacks;
 
         assert.ok(!error);
-        ok.should.be.true;
-
-        memcached.get("test:" + testnr, function(error, answer){
-          ++callbacks;
-
-          assert.ok(!error);
-          assert.ok(answer.toString('utf8') === answer.toString('utf8'));
-          assert.ok(answer.toString('ascii') === answer.toString('ascii'));
-          memcached.end(); // close connections
-          assert.equal(callbacks, 2);
-          done();
-        });
+        assert.ok(answer.toString('utf8') === answer.toString('utf8'));
+        assert.ok(answer.toString('ascii') === answer.toString('ascii'));
+        memcached.end(); // close connections
+        assert.equal(callbacks, 2);
+        done();
       });
+    });
   });
 
   /**
@@ -339,20 +335,20 @@ describe("Memcached GET SET", function() {
    */
   it("set maximum data and check for correct error handling", function(done) {
     var memcached = new Memcached(common.servers.single)
-        , message = fs.readFileSync(__dirname + '/fixtures/lipsum.txt').toString()
-        , testnr = ++global.testnumbers
-        , callbacks = 0;
+      , message = fs.readFileSync(__dirname + '/fixtures/lipsum.txt').toString()
+      , testnr = ++global.testnumbers
+      , callbacks = 0;
 
-      memcached.set("test:" + testnr, new Array(100).join(message), 1000, function(error, ok){
-        ++callbacks;
+    memcached.set("test:" + testnr, new Array(100).join(message), 1000, function(error, ok){
+      ++callbacks;
 
-        assert.equal(error, 'Error: The length of the value is greater than 1048576');
-        ok.should.be.false;
+      assert.equal(error, 'Error: The length of the value is greater than 1048576');
+      ok.should.be.false;
 
-        memcached.end(); // close connections
-        assert.equal(callbacks, 1);
-        done();
-      });
+      memcached.end(); // close connections
+      assert.equal(callbacks, 1);
+      done();
+    });
   });
 
   /**
@@ -360,29 +356,29 @@ describe("Memcached GET SET", function() {
    * without any issues.
    */
   it("set and get large text files", function(done) {
-     var memcached = new Memcached(common.servers.single)
-        , message = fs.readFileSync(__dirname + '/fixtures/lipsum.txt', 'utf8')
-        , testnr = ++global.testnumbers
-        , callbacks = 0;
+    var memcached = new Memcached(common.servers.single)
+      , message = fs.readFileSync(__dirname + '/fixtures/lipsum.txt', 'utf8')
+      , testnr = ++global.testnumbers
+      , callbacks = 0;
 
-      memcached.set("test:" + testnr, message, 1000, function(error, ok){
+    memcached.set("test:" + testnr, message, 1000, function(error, ok){
+      ++callbacks;
+
+      assert.ok(!error);
+      ok.should.be.true;
+
+      memcached.get("test:" + testnr, function(error, answer){
         ++callbacks;
 
         assert.ok(!error);
-        ok.should.be.true;
 
-        memcached.get("test:" + testnr, function(error, answer){
-          ++callbacks;
-
-          assert.ok(!error);
-
-          assert.ok(typeof answer === 'string');
-          answer.should.eql(message);
-          memcached.end(); // close connections
-          assert.equal(callbacks, 2);
-          done();
-        });
+        assert.ok(typeof answer === 'string');
+        answer.should.eql(message);
+        memcached.end(); // close connections
+        assert.equal(callbacks, 2);
+        done();
       });
+    });
   });
 
   /**
@@ -392,38 +388,38 @@ describe("Memcached GET SET", function() {
    */
   it("multi get single server", function(done) {
      var memcached = new Memcached(common.servers.single)
-          , message = common.alphabet(256)
-          , message2 = common.alphabet(256)
-          , testnr = ++global.testnumbers
-          , callbacks = 0;
+      , message = common.alphabet(256)
+      , message2 = common.alphabet(256)
+      , testnr = ++global.testnumbers
+      , callbacks = 0;
 
-      memcached.set("test1:" + testnr, message, 1000, function(error, ok){
+    memcached.set("test1:" + testnr, message, 1000, function(error, ok){
+      ++callbacks;
+
+      assert.ok(!error);
+      ok.should.be.true;
+
+      memcached.set("test2:" + testnr, message2, 1000, function(error, ok){
         ++callbacks;
 
         assert.ok(!error);
         ok.should.be.true;
 
-        memcached.set("test2:" + testnr, message2, 1000, function(error, ok){
+        memcached.get(["test1:" + testnr, "test2:" + testnr], function(error, answer){
           ++callbacks;
 
           assert.ok(!error);
-          ok.should.be.true;
 
-          memcached.get(["test1:" + testnr, "test2:" + testnr], function(error, answer){
-            ++callbacks;
+          assert.ok(typeof answer === 'object');
+          answer["test1:" + testnr].should.eql(message);
+          answer["test2:" + testnr].should.eql(message2);
 
-            assert.ok(!error);
-
-            assert.ok(typeof answer === 'object');
-            answer["test1:" + testnr].should.eql(message);
-            answer["test2:" + testnr].should.eql(message2);
-
-            memcached.end(); // close connections
-            assert.equal(callbacks, 3);
-            done();
-          });
+          memcached.end(); // close connections
+          assert.equal(callbacks, 3);
+          done();
         });
       });
+    });
   });
 
   /**
@@ -433,70 +429,70 @@ describe("Memcached GET SET", function() {
    */
   it("multi get multi server", function(done) {
      var memcached = new Memcached(common.servers.multi)
-          , message = common.alphabet(256)
-          , message2 = common.alphabet(256)
-          , testnr = ++global.testnumbers
-          , callbacks = 0;
+      , message = common.alphabet(256)
+      , message2 = common.alphabet(256)
+      , testnr = ++global.testnumbers
+      , callbacks = 0;
 
-        memcached.set("test1:" + testnr, message, 1000, function(error, ok){
+    memcached.set("test1:" + testnr, message, 1000, function(error, ok){
+      ++callbacks;
+
+      assert.ok(!error);
+      ok.should.be.true;
+
+      memcached.set("test2:" + testnr, message2, 1000, function(error, ok){
+        ++callbacks;
+
+        assert.ok(!error);
+        ok.should.be.true;
+
+        memcached.get(["test1:" + testnr,"test2:" + testnr], function(error, answer){
           ++callbacks;
 
           assert.ok(!error);
-          ok.should.be.true;
 
-          memcached.set("test2:" + testnr, message2, 1000, function(error, ok){
-            ++callbacks;
+          assert.ok(typeof answer === 'object');
+          answer["test1:" + testnr].should.eql(message);
+          answer["test2:" + testnr].should.eql(message2);
 
-            assert.ok(!error);
-            ok.should.be.true;
-
-            memcached.get(["test1:" + testnr,"test2:" + testnr], function(error, answer){
-              ++callbacks;
-
-              assert.ok(!error);
-
-              assert.ok(typeof answer === 'object');
-              answer["test1:" + testnr].should.eql(message);
-              answer["test2:" + testnr].should.eql(message2);
-
-              memcached.end(); // close connections
-              assert.equal(callbacks, 3);
-              done();
-            });
-          });
+          memcached.end(); // close connections
+          assert.equal(callbacks, 3);
+          done();
         });
+      });
     });
+  });
 
-    /**
-     * Make sure that a string beginning with OK is not interpreted as
-     * a command response.
-     */
-    it("set and get a string beginning with OK", function(done) {
-        var memcached = new Memcached(common.servers.single)
-          , message = 'OK123456'
-          , testnr = ++global.testnumbers
-          , callbacks = 0;
+  /**
+   * Make sure that a string beginning with OK is not interpreted as
+   * a command response.
+   */
+  it("set and get a string beginning with OK", function(done) {
+    var memcached = new Memcached(common.servers.single)
+      , message = 'OK123456'
+      , testnr = ++global.testnumbers
+      , callbacks = 0;
 
-        memcached.set("test:" + testnr, message, 1000, function(error, ok){
-          ++callbacks;
+    memcached.set("test:" + testnr, message, 1000, function(error, ok){
+      ++callbacks;
 
-          assert.ok(!error);
-          ok.should.be.true;
+      assert.ok(!error);
+      ok.should.be.true;
 
-          memcached.get("test:" + testnr, function(error, answer){
-            ++callbacks;
+      memcached.get("test:" + testnr, function(error, answer){
+        ++callbacks;
 
-            assert.ok(!error);
+        assert.ok(!error);
 
-            assert.ok(typeof answer === 'string');
-            answer.should.eql(message);
+        assert.ok(typeof answer === 'string');
+        answer.should.eql(message);
 
-            memcached.end(); // close connections
-            assert.equal(callbacks, 2);
-            done();
-          });
-        });
+        memcached.end(); // close connections
+        assert.equal(callbacks, 2);
+        done();
+      });
     });
+  });
 
   /**
    * Make sure that a string beginning with OK is not interpreted as
@@ -559,53 +555,53 @@ describe("Memcached GET SET", function() {
       });
     });
   });
-  
+
   /**
-    * Make sure long keys are hashed
-    */
-   it("make sure you can get really long strings", function(done) {
-     var memcached = new Memcached(common.servers.single)
-       , message = 'VALUE hello, I\'m not really a value.'
-       , testnr = "01234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"+(++global.testnumbers)
-       , callbacks = 0;
+   * Make sure long keys are hashed
+   */
+  it("make sure you can get really long strings", function(done) {
+    var memcached = new Memcached(common.servers.single)
+      , message = 'VALUE hello, I\'m not really a value.'
+      , testnr = "01234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"+(++global.testnumbers)
+      , callbacks = 0;
 
-     memcached.set("test:" + testnr, message, 1000, function(error, ok){
-       ++callbacks;
+    memcached.set("test:" + testnr, message, 1000, function(error, ok){
+      ++callbacks;
 
-       assert.ok(!error);
-       ok.should.be.true;
+      assert.ok(!error);
+      ok.should.be.true;
 
-       memcached.get("test:" + testnr, function(error, answer){
-         ++callbacks;
-
-         assert.ok(!error);
-
-         assert.ok(typeof answer === 'string');
-         answer.should.eql(message);
-
-         memcached.end(); // close connections
-         assert.equal(callbacks, 2);
-         done();
-       });
-     });
-   });
-   
-   /**
-     * Make sure keys with spaces return an error
-     */
-    it("errors on spaces in strings", function(done) {
-      var memcached = new Memcached(common.servers.single)
-        , message = 'VALUE hello, I\'m not really a value.'
-        , testnr = " "+(++global.testnumbers)
-        , callbacks = 0;
-
-      memcached.set("test:" + testnr, message, 1000, function(error, ok){
+      memcached.get("test:" + testnr, function(error, answer){
         ++callbacks;
 
-        assert.ok(error);
-        assert.ok(error.message == 'The key should not contain any whitespace or new lines')
-        
+        assert.ok(!error);
+
+        assert.ok(typeof answer === 'string');
+        answer.should.eql(message);
+
+        memcached.end(); // close connections
+        assert.equal(callbacks, 2);
         done();
       });
     });
+  });
+
+  /**
+   * Make sure keys with spaces return an error
+   */
+  it("errors on spaces in strings", function(done) {
+    var memcached = new Memcached(common.servers.single)
+      , message = 'VALUE hello, I\'m not really a value.'
+      , testnr = " "+(++global.testnumbers)
+      , callbacks = 0;
+
+    memcached.set("test:" + testnr, message, 1000, function(error, ok){
+      ++callbacks;
+
+      assert.ok(error);
+      assert.ok(error.message === 'The key should not contain any whitespace or new lines');
+
+      done();
+    });
+  });
 });
