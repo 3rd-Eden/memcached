@@ -23,7 +23,7 @@ describe("Memcached TOUCH", function() {
         , testnr = ++global.testnumbers
         , callbacks = 0;
 
-      memcached.set("test:" + testnr, message, 1000, function(error, ok){
+      memcached.set("test:" + testnr, message, 1, function(error, ok){
         ++callbacks;
 
         assert.ok(!error);
