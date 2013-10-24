@@ -57,7 +57,7 @@ can work with it. You can either use:
   running a cluster of Memcached servers. This will allow you to spread the keys
   and load between the different servers. Giving you higher availability for
   when one of your Memcached servers goes down.
-  
+
 3. **Object**, when you are running a cluster of Memcached servers it could
    happen to not all server can allocate the same amount of memory. You might
    have a Memcached server with 128mb, 512, 128mb. If you would the array
@@ -136,7 +136,7 @@ Touches the given key.
 **Arguments**
 
 `key`: **String** The key
-`lifetime`: **Number** After how long should the key expire.
+`lifetime`: **Number** After how long should the key expire measured in `seconds`
 `callback`: **Function**
 
 ```js
@@ -202,7 +202,7 @@ Stores a new value in Memcached.
 
 `key`: **String** the name of the key
 `value`: **Mixed** Either a buffer, JSON, number or string that you want to store.
-`lifetime`: **Number**, how long the data needs to be stored
+`lifetime`: **Number**, how long the data needs to be stored measured in `seconds`
 `callback`: **Function** the callback
 
 ```js
@@ -219,7 +219,7 @@ Replaces the value in memcached.
 
 `key`: **String** the name of the key
 `value`: **Mixed** Either a buffer, JSON, number or string that you want to store.
-`lifetime`: **Number**, how long the data needs to be replaced
+`lifetime`: **Number**, how long the data needs to be replaced measured in `seconds`
 `callback`: **Function** the callback
 
 ```js
@@ -236,7 +236,7 @@ Add the value, only if it's in memcached already.
 
 `key`: **String** the name of the key
 `value`: **Mixed** Either a buffer, JSON, number or string that you want to store.
-`lifetime`: **Number**, how long the data needs to be replaced
+`lifetime`: **Number**, how long the data needs to be replaced measured in `seconds`
 `callback`: **Function** the callback
 
 ```js
@@ -253,7 +253,7 @@ Add the value, only if it matches the given CAS value.
 
 `key`: **String** the name of the key
 `value`: **Mixed** Either a buffer, JSON, number or string that you want to store.
-`lifetime`: **Number**, how long the data needs to be replaced
+`lifetime`: **Number**, how long the data needs to be replaced measured in `seconds`
 `cas`: **String** the CAS value
 `callback`: **Function** the callback
 
@@ -427,7 +427,7 @@ Example:
 ``` js
 memcached.multi( false, function( server, key, index, totals ){
   if( err ) throw new Error( err );
-  
+
   this.connect( server, function( err, conn ){
     console.log( "connection ready" )
   })
@@ -449,7 +449,7 @@ to the Memcached server.
 specification.
 
 `server`: *String*, The server the to connect. This is only needed when the
-metaData object doesn't contain a key property to retrieve the server from. 
+metaData object doesn't contain a key property to retrieve the server from.
 
 Example:
 
@@ -507,7 +507,7 @@ shift to a metaData object. The metaData object contains all information that we
 used to generate the request for the Memcached server. The metaData object
 contains the following properties:
 
-* `start`: Date in milliseconds when the request was received 
+* `start`: Date in milliseconds when the request was received
 * `execution`: Total execution time for the request, including response parsing.
 * `callback`: Reference to the callback function
 * `type`: The type of Memcached command
@@ -515,14 +515,14 @@ contains the following properties:
 * `validate`: The properties of metaData object that needs type validation.
 
 And all the arguments you have send to the method, this depends on the method
-you have called. 
-  
+you have called.
+
 ## Events
 
 When connection issues occur we send out different notifications using the
 `EventEmitter` protocol. This can be useful for logging, notification and
 debugging purposes. Each event will receive details Object containing detailed
-information about the issues that occurred. 
+information about the issues that occurred.
 
 ### Details Object
 
@@ -555,7 +555,7 @@ the success and failure combined.
 ### Events
 
 There are `5` different events that the `memcached` client emits when connection
-issues occur. 
+issues occur.
 
 * `issue`: a issue occurred on one a server, we are going to attempt a retry next.
 * `failure`: a server has been marked as failure or dead.
