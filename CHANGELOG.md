@@ -1,3 +1,9 @@
+### 0.2.6
+  - Handle error when unable to establish connection #155
+  - Document lifetime parameter #156
+  - Reformat tests to use two-space indents
+  - Corrent maxkeysize #153
+
 ### 0.2.5
   - Fix for two bugs in Issuelog #137 and #141
   - Add new `failuresTimeout` option
