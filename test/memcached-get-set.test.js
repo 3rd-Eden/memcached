@@ -604,4 +604,25 @@ describe("Memcached GET SET", function() {
       done();
     });
   });
+
+  /*
+    Make sure that getMulti calls work for very long keys.
+    If the keys aren't hashed because they are too long, memcached will throw exceptions, so we need to make sure that exceptions aren't thrown.
+  */
+  it("make sure you can getMulti really long keys", function(done) {
+    var memcached = new Memcached(common.servers.single)
+      , message = 'My value is not relevant'
+      , testnr1 = "01234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"+(++global.testnumbers)
+      , testnr2 = "01234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"+(global.testnumbers)+"a"
+      , callbacks = 0;
+
+    memcached.getMulti([ testnr1, testnr2 ], function(error, ok) {
+      ++callbacks;
+
+      assert.ok(!error);
+      memcached.end();
+      assert.equal(callbacks, 1);
+      done();
+    });
+  });
 });
