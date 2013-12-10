@@ -104,4 +104,47 @@ describe('Memcached tests with Namespaces', function () {
       });
     });
   });
+
+  /**
+   * In this case, these keys will be allocated to servers like below.
+   * test1,3,4 => :11211
+   * test5     => :11212
+   * test2     => :11213
+   */
+  it('multi get from multi server with custom namespace (inc. cache miss)', function (done) {
+    var memcached = new Memcached(common.servers.multi, {
+          namespace: 'mySegmentedMemcached:'
+        })
+      , callbacks = 0;
+
+    // Load two namespaced variables into memcached
+    memcached.set('test1', 'test1answer', 1000, function (error, ok) {
+      ++callbacks;
+
+      assert.ok(!error);
+      ok.should.be.true;
+
+      memcached.set('test2', 'test2answer', 1000, function (error, ok) {
+        ++callbacks;
+
+        assert.ok(!error);
+        ok.should.be.true;
+
+        memcached.get(['test1', 'test2', 'test3', 'test4', 'test5'], function (error, answer) {
+          ++callbacks;
+          assert.ok(typeof answer === 'object');
+          answer.test1.should.eql('test1answer');
+          answer.test2.should.eql('test2answer');
+          answer.should.not.have.key('test3');
+          answer.should.not.have.key('test4');
+          answer.should.not.have.key('test5');
+
+          memcached.end(); // close connections
+
+          assert.equal(callbacks, 3);
+          done();
+        });
+      });
+    });
+  });
 });
