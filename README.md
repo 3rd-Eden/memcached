@@ -213,7 +213,7 @@ memcached.set('foo', 'bar', 10, function (err) {
 
 #### memcached.replace(key, value, lifetime, callback);
 
-Replaces the value in memcached.
+Replaces the value in memcached. 
 
 **Arguments**
 
@@ -230,7 +230,7 @@ memcached.replace('foo', 'bar', 10, function (err) {
 
 #### memcached.add(key, value, lifetime, callback);
 
-Add the value, only if it's in memcached already.
+Add the value, only if it's not in memcached already.
 
 **Arguments**
 
