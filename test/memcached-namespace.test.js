@@ -147,4 +147,90 @@ describe('Memcached tests with Namespaces', function () {
       });
     });
   });
+
+  it('should allow namespacing on delete', function(done) {
+    var memcached = new Memcached(common.servers.single, {
+        namespace:'someNamespace:'
+    }), callbacks = 0;
+    
+    // put a value
+    memcached.set('test1', 'test1answer', 1000, function(error, ok) {
+        callbacks++;
+        assert.ok(!error);
+        ok.should.be.true;
+
+        // get it back
+        memcached.get('test1', function(error,answer) {
+            callbacks++;
+            assert.ok(typeof answer === 'string');
+            answer.should.eql('test1answer');
+
+            //delete it
+            memcached.del('test1', function(error) {
+                callbacks++;
+                assert.ok(!error);
+    
+                // no longer there
+                memcached.get('test1', function(error,answer) {
+                    callbacks++;
+                    assert.ok(!error);
+                    assert.ok(!answer);
+                    memcached.end();
+                    assert.equal(callbacks,4);
+                    done();
+                });
+            });
+        });
+    });
+  });
+
+  it('should allow increment and decrement on namespaced values', function(done) {
+    var memcached = new Memcached(common.servers.single, {
+        namespace:'someNamespace:'
+    }), callbacks = 0;
+    
+    // put a value
+    memcached.set('test1', 1, 1000, function(error, ok) {
+        callbacks++;
+        assert.ok(!error);
+        ok.should.be.true;
+
+        // increment it
+        memcached.incr('test1', 1, function(error) {
+            callbacks++;
+            assert.ok(!error);
+
+            // get it back
+            memcached.get('test1', function(error,answer) {
+                callbacks++;
+                assert.ok(!error);
+                assert.ok(typeof answer === 'number');
+                answer.should.be.eql(2);
+               
+                // decrement it
+                memcached.decr('test1', 1, function(err) {
+                    callbacks++;
+                    assert.ok(!error);
+
+                    // get it again
+                    memcached.get('test1',function(error,answer) {
+                        callbacks++;
+                        assert.ok(!error);
+                        assert.ok(typeof answer === 'number');
+                        answer.should.be.eql(1);
+                        
+                        //get rid of it
+                        memcached.del('test1', function(error,answer) {
+                            callbacks++;
+                            assert.ok(!error);
+                            memcached.end();
+                            assert.equal(callbacks,6);
+                            done();
+                        });
+                    });
+                });
+            });
+        });
+    });
+  });
 });
