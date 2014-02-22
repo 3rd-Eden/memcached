@@ -1,6 +1,6 @@
 {
     "name": "memcached"
-  , "version": "0.2.6"
+  , "version": "0.2.7"
   , "author": "Arnout Kazemier"
   , "description": "A fully featured Memcached API client, supporting both single and clustered Memcached servers through consistent hashing and failover/failure. Memcached is rewrite of nMemcached, which will be deprecated in the near future."
   , "main": "index"
