@@ -88,7 +88,7 @@ formatted in an JavaScript `object`. They both use the same object structure:
 
 * `maxKeySize`: *250*, the max size of they key allowed by the Memcached server.
 * `maxExpiration`: *2592000*, the max expiration of keys by the Memcached server
-  in milliseconds.
+  in seconds.
 * `maxValue`: *1048576*, the max size of a value that is allowed by the
   Memcached server.
 * `poolSize`: *10*, the maximum connections we can allocate in our connection pool.
