@@ -68,7 +68,7 @@ var memcached = new Memcached('192.168.0.102:11212');
 
 ### Options
 
-There 2 kinds of options that can be configured. A global configuration that
+There are two kinds of options that can be configured. A global configuration that
 will be inherited by all Memcached servers instances and a client specific
 configuration that can be used to overwrite the globals. The options should be
 formatted in an JavaScript `object`. They both use the same object structure:
