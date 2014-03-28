@@ -18,18 +18,16 @@ When these issues occur the `memcached` client will emit different events where
 you can subscribe to containing detailed information about the issues.
 
 The client is configurable on different levels. There's a global configuration
-that you update so all you Memcached clusters will use the same failure
+that you update so all your Memcached clusters will use the same failure
 configuration for example, but it's also possible to overwrite these changes per
 `memcached` instance.
 
 ### protocol
 
-This module uses the ASCII protocol to communicate with the server, this makes
-it easier to debug for you are user as you can see what is send over the wire
-but also for me as developer. But this also means that SASL auth is not
-supported in this driver as that requires the use of the binary protocol. The
-ASCII protocol not only used by memcached but also by other databases and
-message queues, so that is a nice extra.
+As in other databases and message queues, this module uses the ASCII protocol to communicate with 
+the server, which means that you can see what is send over the wire. For debugging this is easier 
+for both the users and the developers however this also means that SASL auth is not supported 
+because it demands the binary protocol. 
 
 ## Setting up the client
 
@@ -55,23 +53,12 @@ can work with it. You can either use:
 2. **Array**, if you are running a single server you would only have to supply
   one item in the array.  The array format is particularly useful if you are
   running a cluster of Memcached servers. This will allow you to spread the keys
-  and load between the different servers. Giving you higher availability for
+  and load between the different servers. Giving you higher availability 
   when one of your Memcached servers goes down.
 
-3. **Object**, when you are running a cluster of Memcached servers it could
-   happen to not all server can allocate the same amount of memory. You might
-   have a Memcached server with 128mb, 512, 128mb. If you would the array
-   structure all servers would have the same weight in the consistent hashing
-   scheme. Spreading the keys 33/33/33 over the servers. But as server 2 has
-   more memory available you might want to give it more weight so more keys get
-   stored on that server. When you are using a object, the `key` should
-   represent the server location syntax and the value the weight of the server.
-   By default all servers have a weight of 1.  `{ '192.168.0.102:11212': 1,
-   '192.168.0.103:11212': 2, '192.168.0.104:11212': 1 }` would generate a
-   25/50/25 distribution of the keys.
+3. **Object**, when running a cluster of Memcached servers, some servers may allocate different amounts of memory, e.g. 128, 512, and 128mb. While by default all servers are equally important and dispatch consistently the keys between the servers (33/33/33%), it is possible to send more keys in servers having more memory. To do so, define an object whose `key` represents the server location and whose value represents a server weight, the default weight for a server being 1; so, for instance `{ '192.168.0.102:11212': 1, '192.168.0.103:11212': 2, '192.168.0.104:11212': 1 }` distributes 50% of the keys on server 103, but only 25% on 104 and 25% on 102. 
 
-If you would implement one of the above formats, your constructor would
-something like this:
+To implement one of the above formats, your constructor would something like this:
 
 ```js
 var memcached = new Memcached({ '192.168.0.102:11212': 1, '192.168.0.103:11212': 2, '192.168.0.104:11212': 1 });
@@ -81,7 +68,7 @@ var memcached = new Memcached('192.168.0.102:11212');
 
 ### Options
 
-There 2 kinds of options that can be configured. A global configuration that
+There are two kinds of options that can be configured. A global configuration that
 will be inherited by all Memcached servers instances and a client specific
 configuration that can be used to overwrite the globals. The options should be
 formatted in an JavaScript `object`. They both use the same object structure:
