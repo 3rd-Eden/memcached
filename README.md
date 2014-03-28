@@ -24,12 +24,10 @@ configuration for example, but it's also possible to overwrite these changes per
 
 ### protocol
 
-This module uses the ASCII protocol to communicate with the server, this makes
-it easier to debug for you are user as you can see what is send over the wire
-but also for me as developer. But this also means that SASL auth is not
-supported in this driver as that requires the use of the binary protocol. The
-ASCII protocol not only used by memcached but also by other databases and
-message queues, so that is a nice extra.
+As in other databases and message queues, this module uses the ASCII protocol to communicate with 
+the server, which means that you can see what is send over the wire. For debugging this is easier 
+for both the users and the developers however this also means that SASL auth is not supported 
+because it demands the binary protocol. 
 
 ## Setting up the client
 
