@@ -53,7 +53,7 @@ can work with it. You can either use:
 2. **Array**, if you are running a single server you would only have to supply
   one item in the array.  The array format is particularly useful if you are
   running a cluster of Memcached servers. This will allow you to spread the keys
-  and load between the different servers. Giving you higher availability for
+  and load between the different servers. Giving you higher availability 
   when one of your Memcached servers goes down.
 
 3. **Object**, when you are running a cluster of Memcached servers it could
