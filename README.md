@@ -56,20 +56,9 @@ can work with it. You can either use:
   and load between the different servers. Giving you higher availability 
   when one of your Memcached servers goes down.
 
-3. **Object**, when you are running a cluster of Memcached servers it could
-   happen to not all server can allocate the same amount of memory. You might
-   have a Memcached server with 128mb, 512, 128mb. If you would the array
-   structure all servers would have the same weight in the consistent hashing
-   scheme. Spreading the keys 33/33/33 over the servers. But as server 2 has
-   more memory available you might want to give it more weight so more keys get
-   stored on that server. When you are using a object, the `key` should
-   represent the server location syntax and the value the weight of the server.
-   By default all servers have a weight of 1.  `{ '192.168.0.102:11212': 1,
-   '192.168.0.103:11212': 2, '192.168.0.104:11212': 1 }` would generate a
-   25/50/25 distribution of the keys.
+3. **Object**, when running a cluster of Memcached servers, some servers may allocate different amounts of memory, e.g. 128, 512, and 128mb. While by default all servers are equally important and dispatch consistently the keys between the servers (33/33/33%), it is possible to send more keys in servers having more memory. To do so, define an object whose `key` represents the server location and whose value represents a server weight, the default weight for a server being 1; so, for instance `{ '192.168.0.102:11212': 1, '192.168.0.103:11212': 2, '192.168.0.104:11212': 1 }` distributes 50% of the keys on server 103, but only 25% on 104 and 25% on 102. 
 
-If you would implement one of the above formats, your constructor would
-something like this:
+To implement one of the above formats, your constructor would something like this:
 
 ```js
 var memcached = new Memcached({ '192.168.0.102:11212': 1, '192.168.0.103:11212': 2, '192.168.0.104:11212': 1 });
