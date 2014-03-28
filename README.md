@@ -18,7 +18,7 @@ When these issues occur the `memcached` client will emit different events where
 you can subscribe to containing detailed information about the issues.
 
 The client is configurable on different levels. There's a global configuration
-that you update so all you Memcached clusters will use the same failure
+that you update so all your Memcached clusters will use the same failure
 configuration for example, but it's also possible to overwrite these changes per
 `memcached` instance.
 
