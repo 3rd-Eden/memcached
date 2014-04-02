@@ -76,11 +76,11 @@ Memcached server uses the same properties:
 * `maxExpiration`: *2592000*, the maximum expiration time of keys (in seconds).
 * `maxValue`: *1048576*, the maximum size of a value.
 * `poolSize`: *10*, the maximum size of the connection pool.
-* `algorithm`: *crc32*, the hashing algorithm used to generate the hashRing values.
+* `algorithm`: *crc32*, the hashing algorithm used to generate the `hashRing` values.
 * `reconnect`: *18000000*, the time between reconnection attempts (in milliseconds).
 * `timeout`: *5000*, the time after which Memcached sends a connection timeout (in milliseconds).
-* `retries`: *5*, the number of socket allocation retry per request.
-* `failures`: *5*, the number of failed-attempts to a server before it regarded as 'dead'.
+* `retries`: *5*, the number of socket allocation retries per request.
+* `failures`: *5*, the number of failed-attempts to a server before it is regarded as 'dead'.
 * `retry`: *30000*, the time between a server failure and an attempt to set it up back in service.
 * `remove`: *false*, if *true*, authorizes the automatic removal of dead servers from the pool.
 * `failOverServers`: *undefined*, an array of `server_locations` to replace servers that fail and 
