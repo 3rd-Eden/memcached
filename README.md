@@ -70,31 +70,22 @@ var memcached = new Memcached('192.168.0.102:11212');
 
 Memcached accepts two option schemes. The first one inherits of all Memcached server instances 
 while the second one is client specific and overwrites the globals. To define these options,
-Memcached uses the same properties. 
+Memcached server uses the same properties: 
 
-* `maxKeySize`: *250*, the max size of they key allowed by the Memcached server.
-* `maxExpiration`: *2592000*, the max expiration of keys by the Memcached server
-  in seconds.
-* `maxValue`: *1048576*, the max size of a value that is allowed by the
-  Memcached server.
-* `poolSize`: *10*, the maximum connections we can allocate in our connection pool.
-* `algorithm`: *crc32*, the hashing algorithm that should be used to generate
-  the hashRing values.
-* `reconnect`: *18000000*, when the server is marked as dead we will attempt to
-  reconnect every x milliseconds.
-* `timeout`: *5000*, after x ms the server should send a timeout if we can't
-  connect. This will also be used close the connection if we are idle.
-* `retries`: *5*, How many times to retry socket allocation for given request
-* `failures`: *5*, Number of times a server may have issues before marked dead.
-* `retry`: *30000*, time to wait between failures before putting server back in
-  service.
-* `remove`: *false*, when the server is marked as dead you can remove it from
-  the pool so all other will receive the keys instead.
-* `failOverServers`: *undefined*, the ability use these servers as failover when
-  the dead server get's removed from the consistent hashing scheme. This must be
-  an array of servers confirm the server_locations specification.
-* `keyCompression`: *true*, compress keys using md5 if they exceed the
-  maxKeySize option.
+* `maxKeySize`: *250*, the maximum key size allowed.
+* `maxExpiration`: *2592000*, the maximum expiration time of keys (in seconds).
+* `maxValue`: *1048576*, the maximum size of a value.
+* `poolSize`: *10*, the maximum size of the connection pool.
+* `algorithm`: *crc32*, the hashing algorithm used to generate the hashRing values.
+* `reconnect`: *18000000*, the time between reconnection attempts (in milliseconds).
+* `timeout`: *5000*, the time after which Memcached sends a connection timeout (in milliseconds).
+* `retries`: *5*, the number of socket allocation retry per request.
+* `failures`: *5*, the number of failed-attempts to a server before it regarded as 'dead'.
+* `retry`: *30000*, the time between a server failure and an attempt to set it up back in service.
+* `remove`: *false*, if *true*, authorizes the automatic removal of dead servers from the pool.
+* `failOverServers`: *undefined*, an array of `server_locations` to replace servers that fail and 
+ that are removed from the consistent hashing scheme. 
+* `keyCompression`: *true*, whether to use `md5` as hashing scheme when keys exceed `maxKeySize`.
 * `idle`: *5000*, the idle timeout for the connections.
 
 Example usage:
