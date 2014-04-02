@@ -68,10 +68,9 @@ var memcached = new Memcached('192.168.0.102:11212');
 
 ### Options
 
-There are two kinds of options that can be configured. A global configuration that
-will be inherited by all Memcached servers instances and a client specific
-configuration that can be used to overwrite the globals. The options should be
-formatted in an JavaScript `object`. They both use the same object structure:
+Memcached accepts two option schemes. The first one inherits of all Memcached server instances 
+while the second one is client specific and overwrites the globals. To define these options,
+Memcached uses the same properties. 
 
 * `maxKeySize`: *250*, the max size of they key allowed by the Memcached server.
 * `maxExpiration`: *2592000*, the max expiration of keys by the Memcached server
