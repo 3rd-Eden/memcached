@@ -1,7 +1,7 @@
 # Memcached [![Build Status](https://secure.travis-ci.org/3rd-Eden/node-memcached.png?branch=master)](http://travis-ci.org/3rd-Eden/node-memcached)
 
 `memcached` is a fully featured Memcached client for Node.js. `memcached` is
-build with scaling, high availability and exceptional performance in mind. We
+built with scaling, high availability and exceptional performance in mind. We
 use consistent hashing to store the data across different nodes. Consistent
 hashing is a scheme that provides a hash table functionality in a way that
 adding or removing a server node does not significantly change the mapping of
