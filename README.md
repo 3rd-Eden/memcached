@@ -236,7 +236,7 @@ memcached.incr('foo', 10, function (err) { /* stuff */ });
 * `callback`: **Function** the callback
 
 ```js
-memcached.incr('foo', 10, function (err) { /* stuff */ });
+memcached.decr('foo', 10, function (err) { /* stuff */ });
 ```
 
 **memcached.del** Remove the key from memcached.
