@@ -49,7 +49,7 @@ describe('Memcached connections', function () {
               throw err;
           });
         };
-        assert.throws(noserver, /Server not available/);
+        assert.throws(noserver, new RegExp('Server at 127.0.1.1234 not available'));
         memcached.end();
         done();
     });
@@ -90,7 +90,7 @@ describe('Memcached connections', function () {
       assert.deepEqual(memcached.issues[server].failed, true);
       // Immediate request should not decrement failures
       memcached.get('idontcare', function(err) {
-        assert.throws(function() { throw err }, /Server not available/);
+        assert.throws(function() { throw err }, /not available/);
         assert.deepEqual(memcached.issues[server].failures, 5);
       assert.deepEqual(memcached.issues[server].locked, true);
       assert.deepEqual(memcached.issues[server].failed, true);
@@ -129,7 +129,7 @@ describe('Memcached connections', function () {
       assert.throws(function() { throw err }, /connect ECONNREFUSED/);
       // Second request should not schedule another reconnect
       memcached.get('idontcare', function (err) {
-        assert.throws(function() { throw err }, /Server not available/);
+        assert.throws(function() { throw err }, /not available/);
         // Allow enough time to pass for a connection retries to occur
         setTimeout(function() {
           assert.deepEqual(reconnectAttempts, 1);
@@ -161,7 +161,7 @@ describe('Memcached connections', function () {
           assert.throws(function() { throw err }, /connect ECONNREFUSED/);
             // Third request should find no servers
             memcached.get('idontcare', function(err) {
-            assert.throws(function() { throw err }, /Server not available/);
+            assert.throws(function() { throw err }, /not available/);
               // Give enough time for server to reconnect
               setTimeout(function() {
                 // Server should be reconnected, but expect ECONNREFUSED
@@ -224,7 +224,7 @@ describe('Memcached connections', function () {
       var S = memcached.connections[common.servers.single].pool.pop();
       S.emit('error', new Error('Dummy error'));
       memcached.get('idontcare', function(err) {
-        assert.throws(function() { throw err; }, /Server not available/);
+        assert.throws(function() { throw err; }, /not available/);
         done();
       });
     });
