@@ -42,6 +42,6 @@
     "pre-commit": "*"
   },
   "scripts": {
-    "test": "./node_modules/.bin/mocha $(shell find test -name '*.test.js')"
+    "test": "./node_modules/.bin/mocha ./test/*.test.js"
   }
 }
