@@ -47,8 +47,8 @@ can work with it. You can either use:
 
 1. **String**, this only works if you have are running a single server instance
    of Memcached.  It's as easy a suppling a string in the following format:
-   `hostname:port`. For example `192.168.0.102:11212` This would tell the client
-   to connect to host `192.168.0.102` on port number `11212`.
+   `hostname:port`. For example `192.168.0.102:11211` This would tell the client
+   to connect to host `192.168.0.102` on port number `11211`.
 
 2. **Array**, if you are running a single server you would only have to supply
   one item in the array.  The array format is particularly useful if you are
@@ -56,14 +56,14 @@ can work with it. You can either use:
   and load between the different servers. Giving you higher availability 
   when one of your Memcached servers goes down.
 
-3. **Object**, when running a cluster of Memcached servers, some servers may allocate different amounts of memory, e.g. 128, 512, and 128mb. While by default all servers are equally important and dispatch consistently the keys between the servers (33/33/33%), it is possible to send more keys in servers having more memory. To do so, define an object whose `key` represents the server location and whose value represents a server weight, the default weight for a server being 1; so, for instance `{ '192.168.0.102:11212': 1, '192.168.0.103:11212': 2, '192.168.0.104:11212': 1 }` distributes 50% of the keys on server 103, but only 25% on 104 and 25% on 102. 
+3. **Object**, when running a cluster of Memcached servers, some servers may allocate different amounts of memory, e.g. 128, 512, and 128mb. While by default all servers are equally important and dispatch consistently the keys between the servers (33/33/33%), it is possible to send more keys in servers having more memory. To do so, define an object whose `key` represents the server location and whose value represents a server weight, the default weight for a server being 1; so, for instance `{ '192.168.0.102:11211': 1, '192.168.0.103:11211': 2, '192.168.0.104:11211': 1 }` distributes 50% of the keys on server 103, but only 25% on 104 and 25% on 102. 
 
 To implement one of the above formats, your constructor would look like this:
 
 ```js
-var memcached = new Memcached({ '192.168.0.102:11212': 1, '192.168.0.103:11212': 2, '192.168.0.104:11212': 1 });
-var memcached = new Memcached([ '192.168.0.102:11212', '192.168.0.103:11212', '192.168.0.104:11212' ]);
-var memcached = new Memcached('192.168.0.102:11212');
+var memcached = new Memcached({ '192.168.0.102:11211': 1, '192.168.0.103:11211': 2, '192.168.0.104:11211': 1 });
+var memcached = new Memcached([ '192.168.0.102:11211', '192.168.0.103:11211', '192.168.0.104:11211' ]);
+var memcached = new Memcached('192.168.0.102:11211');
 ```
 
 ### Options
@@ -91,7 +91,7 @@ Memcached server uses the same properties:
 Example usage:
 
 ```js
-var memcached = new Memcached('localhost:11212', {retries:10,retry:10000,remove:true,failOverServers:['192.168.0.103:11212']});
+var memcached = new Memcached('localhost:11211', {retries:10,retry:10000,remove:true,failOverServers:['192.168.0.103:11211']});
 ```
 
 If you wish to configure the options globally:
@@ -294,7 +294,7 @@ confirm the server_locations specification.
 * `callback`: *Function*, The callback function that receives the net.Stre
 
 ``` js
-memcached.connect( '192.168.0.103:11212', function( err, conn ){
+memcached.connect( '192.168.0.103:11211', function( err, conn ){
   if( err ) throw new Error( err );
   console.log( conn.server );
 });
@@ -439,7 +439,7 @@ issues occur.
 Example implementations:
 
 ```js
-var memcached = new Memcached([ '192.168.0.102:11212', '192.168.0.103:11212' ]);
+var memcached = new Memcached([ '192.168.0.102:11211', '192.168.0.103:11211' ]);
 memcached.on('failure', function( details ){ sys.error( "Server " + details.server + "went down due to: " + details.messages.join( '' ) ) });
 memcached.on('reconnecting', function( details ){ sys.debug( "Total downtime caused by server " + details.server + " :" + details.totalDownTime + "ms")});
 ```
