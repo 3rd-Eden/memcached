@@ -43,7 +43,7 @@ describe('Memcached tests with Namespaces', function () {
 
         assert.ok(!error);
         ok.should.be.true;
-        answer.should.be.false;
+        assert.ok(answer===undefined);
 
         // OK, now let's put it in with the namespace prepended
         memcachedOther.set('test:' + testnr, message, 1000, function (error, ok) {
@@ -152,7 +152,7 @@ describe('Memcached tests with Namespaces', function () {
     var memcached = new Memcached(common.servers.single, {
         namespace:'someNamespace:'
     }), callbacks = 0;
-    
+
     // put a value
     memcached.set('test1', 'test1answer', 1000, function(error, ok) {
         callbacks++;
@@ -169,7 +169,7 @@ describe('Memcached tests with Namespaces', function () {
             memcached.del('test1', function(error) {
                 callbacks++;
                 assert.ok(!error);
-    
+
                 // no longer there
                 memcached.get('test1', function(error,answer) {
                     callbacks++;
@@ -188,7 +188,7 @@ describe('Memcached tests with Namespaces', function () {
     var memcached = new Memcached(common.servers.single, {
         namespace:'someNamespace:'
     }), callbacks = 0;
-    
+
     // put a value
     memcached.set('test1', 1, 1000, function(error, ok) {
         callbacks++;
@@ -206,7 +206,7 @@ describe('Memcached tests with Namespaces', function () {
                 assert.ok(!error);
                 assert.ok(typeof answer === 'number');
                 answer.should.be.eql(2);
-               
+
                 // decrement it
                 memcached.decr('test1', 1, function(err) {
                     callbacks++;
@@ -218,7 +218,7 @@ describe('Memcached tests with Namespaces', function () {
                         assert.ok(!error);
                         assert.ok(typeof answer === 'number');
                         answer.should.be.eql(1);
-                        
+
                         //get rid of it
                         memcached.del('test1', function(error,answer) {
                             callbacks++;
