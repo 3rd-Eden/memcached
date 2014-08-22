@@ -40,7 +40,7 @@ describe("Memcached TOUCH", function() {
               ++callbacks;
 
               assert.ok(!error);
-              answer.should.be.false;
+              assert.ok(answer===undefined);
 
               memcached.end(); // close connections
               assert.equal(callbacks, 3);
