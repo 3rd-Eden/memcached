@@ -247,7 +247,7 @@ this.connections[server].allocate(callback);</code></pre>
 // or just gives all servers if we don't have keys
 if (keys){
   keys.forEach(function fetchMultipleServers(key){
-    var server = memcached.HashRing.getNode(key);
+    var server = memcached.HashRing.get(key);
     if (map[server]){
       map[server].push(key);
     } else {
@@ -281,7 +281,7 @@ var query = queryCompiler()
 if (query.validation &amp;&amp; !Utils.validateArg(query, this)) return;
 
 // fetch servers
-server = server ? server : redundancy &amp;&amp; queryRedundancy ? (redundancy = this.HashRing.createRange(query.key, (this.redundancy + 1), true)).shift() : this.HashRing.getNode(query.key);
+server = server ? server : redundancy &amp;&amp; queryRedundancy ? (redundancy = this.HashRing.createRange(query.key, (this.redundancy + 1), true)).shift() : this.HashRing.get(query.key);
 
 // check if the server is still alive
 if (server in this.issues &amp;&amp; this.issues[server].failed) return query.callback &amp;&amp; query.callback(false, false);

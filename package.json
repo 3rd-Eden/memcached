@@ -33,7 +33,7 @@
     "url": "http://github.com/3rd-Eden/node-memcached.git"
   },
   "dependencies": {
-    "hashring": "0.0.x",
+    "hashring": "1.0.x",
     "jackpot": ">=0.0.6"
   },
   "devDependencies": {

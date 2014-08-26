@@ -76,7 +76,7 @@ Memcached server uses the same properties:
 * `maxExpiration`: *2592000*, the maximum expiration time of keys (in seconds).
 * `maxValue`: *1048576*, the maximum size of a value.
 * `poolSize`: *10*, the maximum size of the connection pool.
-* `algorithm`: *crc32*, the hashing algorithm used to generate the `hashRing` values.
+* `algorithm`: *md5*, the hashing algorithm used to generate the `hashRing` values.
 * `reconnect`: *18000000*, the time between reconnection attempts (in milliseconds).
 * `timeout`: *5000*, the time after which Memcached sends a connection timeout (in milliseconds).
 * `retries`: *5*, the number of socket allocation retries per request.
@@ -443,6 +443,13 @@ var memcached = new Memcached([ '192.168.0.102:11211', '192.168.0.103:11211' ]);
 memcached.on('failure', function( details ){ sys.error( "Server " + details.server + "went down due to: " + details.messages.join( '' ) ) });
 memcached.on('reconnecting', function( details ){ sys.debug( "Total downtime caused by server " + details.server + " :" + details.totalDownTime + "ms")});
 ```
+
+# Compatibility
+For compatibility with other [libmemcached](http://libmemcached.org/Clients.html) clients they need to have the behavior
+`ketama_weighted` set to true and the `hash` set to the same as `node-memcached`'s
+`algorithm`.
+
+Due to client dependent type flags it is unlikely that any types other than `string` will work.
 
 # Contributors
 
