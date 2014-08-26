@@ -4,9 +4,10 @@ node_js:
   - "0.8"
   - "0.10"
 
-# Create a travis enabled environment for the test suite to run in.
-script: "make travisci"
+# Create a travis memcached enabled environment for the test suite to run in and
+# ensure that we test against localhost on travis-ci
 services: memcache
+env: MEMCACHED__HOST=localhost
 
 # the `sevices: memcache` will start a memcached service on localhost
 # and on the default port, but in order to test against multiple memcache
