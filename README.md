@@ -24,10 +24,10 @@ configuration for example, but it's also possible to overwrite these changes per
 
 ### protocol
 
-As in other databases and message queues, this module uses the ASCII protocol to communicate with 
-the server, which means that you can see what is send over the wire. For debugging this is easier 
-for both the users and the developers however this also means that SASL auth is not supported 
-because it demands the binary protocol. 
+As in other databases and message queues, this module uses the ASCII protocol to communicate with
+the server, which means that you can see what is send over the wire. For debugging this is easier
+for both the users and the developers however this also means that SASL auth is not supported
+because it demands the binary protocol.
 
 ## Setting up the client
 
@@ -45,7 +45,7 @@ The server locations is designed to work with different formats. These formats
 are all internally parsed to the correct format so our consistent hashing scheme
 can work with it. You can either use:
 
-1. **String**, this only works if you have are running a single server instance
+1. **String**, this only works if you are running a single server instance
    of Memcached.  It's as easy a suppling a string in the following format:
    `hostname:port`. For example `192.168.0.102:11211` This would tell the client
    to connect to host `192.168.0.102` on port number `11211`.
@@ -53,10 +53,10 @@ can work with it. You can either use:
 2. **Array**, if you are running a single server you would only have to supply
   one item in the array.  The array format is particularly useful if you are
   running a cluster of Memcached servers. This will allow you to spread the keys
-  and load between the different servers. Giving you higher availability 
+  and load between the different servers. Giving you higher availability
   when one of your Memcached servers goes down.
 
-3. **Object**, when running a cluster of Memcached servers, some servers may allocate different amounts of memory, e.g. 128, 512, and 128mb. While by default all servers are equally important and dispatch consistently the keys between the servers (33/33/33%), it is possible to send more keys in servers having more memory. To do so, define an object whose `key` represents the server location and whose value represents a server weight, the default weight for a server being 1; so, for instance `{ '192.168.0.102:11211': 1, '192.168.0.103:11211': 2, '192.168.0.104:11211': 1 }` distributes 50% of the keys on server 103, but only 25% on 104 and 25% on 102. 
+3. **Object**, when running a cluster of Memcached servers, some servers may allocate different amounts of memory, e.g. 128, 512, and 128mb. While by default all servers are equally important and dispatch consistently the keys between the servers (33/33/33%), it is possible to send more keys in servers having more memory. To do so, define an object whose `key` represents the server location and whose value represents a server weight, the default weight for a server being 1; so, for instance `{ '192.168.0.102:11211': 1, '192.168.0.103:11211': 2, '192.168.0.104:11211': 1 }` distributes 50% of the keys on server 103, but only 25% on 104 and 25% on 102.
 
 To implement one of the above formats, your constructor would look like this:
 
@@ -68,9 +68,9 @@ var memcached = new Memcached('192.168.0.102:11211');
 
 ### Options
 
-Memcached accepts two option schemes. The first one inherits of all Memcached server instances 
+Memcached accepts two option schemes. The first one inherits of all Memcached server instances
 while the second one is client specific and overwrites the globals. To define these options,
-Memcached server uses the same properties: 
+Memcached server uses the same properties:
 
 * `maxKeySize`: *250*, the maximum key size allowed.
 * `maxExpiration`: *2592000*, the maximum expiration time of keys (in seconds).
@@ -83,8 +83,8 @@ Memcached server uses the same properties:
 * `failures`: *5*, the number of failed-attempts to a server before it is regarded as 'dead'.
 * `retry`: *30000*, the time between a server failure and an attempt to set it up back in service.
 * `remove`: *false*, if *true*, authorizes the automatic removal of dead servers from the pool.
-* `failOverServers`: *undefined*, an array of `server_locations` to replace servers that fail and 
- that are removed from the consistent hashing scheme. 
+* `failOverServers`: *undefined*, an array of `server_locations` to replace servers that fail and
+ that are removed from the consistent hashing scheme.
 * `keyCompression`: *true*, whether to use `md5` as hashing scheme when keys exceed `maxKeySize`.
 * `idle`: *5000*, the idle timeout for the connections.
 
@@ -163,7 +163,7 @@ memcached.getMulti(['foo', 'bar'], function (err, data) {
 memcached.set('foo', 'bar', 10, function (err) { /* stuff */ });
 ```
 
-**memcached.replace** Replaces the value in memcached. 
+**memcached.replace** Replaces the value in memcached.
 
 * `key`: **String** the name of the key
 * `value`: **Mixed** Either a buffer, JSON, number or string that you want to store.
@@ -274,9 +274,9 @@ memcached.del('foo', function (err) { /* stuff */ });
 
 **memcached.cachedump** Inspect cache, see examples for a detailed explanation.
 
-* `server` 
-* `slabid` 
-* `number` 
+* `server`
+* `slabid`
+* `number`
 * `callback`
 
 **memcached.end** Closes all active memcached connections.
