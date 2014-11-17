@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "hashring": "3.0.x",
-    "hashring-0.0.6": "~0.0.6",
+    "hashring-0.0.6": "~0.0.6-pkg",
     "jackpot": ">=0.0.6"
   },
   "devDependencies": {
