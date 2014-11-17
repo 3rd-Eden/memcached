@@ -20,7 +20,7 @@ describe('Memcached CAS', function () {
    * sure that a `cas` key is given.
    */
   it('set and gets for cas result', function (done) {
-    var memcached = new Memcached(common.servers.single)
+    var memcached = new Memcached(common.servers.single, { algorithm: "crc32" })
         , message = common.alphabet(256)
         , testnr = ++global.testnumbers
         , callbacks = 0;
