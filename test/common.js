@@ -20,7 +20,7 @@ exports.servers = {
     single: testMemcachedHost + ':11211'
   , multi: [
       testMemcachedHost + ':11211'
-    //, testMemcachedHost + ':11212'
+    , testMemcachedHost + ':11212'
     //, testMemcachedHost + ':11213'
   ]
 };

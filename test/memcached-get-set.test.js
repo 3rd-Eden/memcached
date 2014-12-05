@@ -20,7 +20,7 @@ describe("Memcached GET SET", function() {
    * that we are not retrieving old data.
    */
   it("set and get a regular string", function(done) {
-    var memcached = new Memcached(common.servers.single)
+    var memcached = new Memcached(common.servers.single, { algorithm: "crc32" })
       , message = common.alphabet(256)
       , testnr = ++global.testnumbers
       , callbacks = 0;
