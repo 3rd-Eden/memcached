@@ -178,6 +178,18 @@ describe('Memcached connections', function () {
       },10);
     });
   });
+  it('should default to port 11211', function(done) {
+    // Use an IP without port
+    var server = '127.0.0.1'
+    , memcached = new Memcached(server);
+
+    memcached.get('idontcare', function(err) {
+      assert.ifError(err);
+      assert.equal(Object.keys(memcached.connections)[0], '127.0.0.1:11211');
+      memcached.end();
+      done();
+    });
+  });
   it('should return error on connection timeout', function(done) {
     // Use a non routable IP
     var server = '10.255.255.255:1234'
