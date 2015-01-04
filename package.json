@@ -24,7 +24,6 @@
   },
   "dependencies": {
     "hashring": "3.0.x",
-    "hashring...old": "~0.0.8",
     "jackpot": ">=0.0.6"
   },
   "devDependencies": {
