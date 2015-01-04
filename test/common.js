@@ -14,14 +14,14 @@
  * @type {Object}
  * @api public
  */
-var testMemcachedHost = process.env.MEMCACHED__HOST || '10.211.55.5';
+var testMemcachedHost = process.env.MEMCACHED__HOST || '127.0.0.1';
 
 exports.servers = {
     single: testMemcachedHost + ':11211'
   , multi: [
       testMemcachedHost + ':11211'
     , testMemcachedHost + ':11212'
-    , testMemcachedHost + ':11213'
+    //, testMemcachedHost + ':11213'
   ]
 };
 
