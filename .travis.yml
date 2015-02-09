@@ -1,8 +1,13 @@
 # Ensure that we only run CI test on the Node.js enabled servers.
 language: node_js
 node_js:
-  - "0.8"
+  - "0.12"
+  - "0.11"
   - "0.10"
+  - "0.9"
+  - "0.8"
+  - "iojs-v1.1"
+  - "iojs-v1.0"
 
 # Create a Travis memcached enabled environment for the test suite to run in and
 # ensure that we test against localhost on Travis-CI.
@@ -20,3 +25,13 @@ before_script:
 # Fix broken builds caused by packages using the carrot semver bullshit.
 before_install:
   - "npm install -g npm@2.1.x"
+
+# Allow failing of these specific builds, they are not that important yet as
+# they either lack adoption of large base of users or are beta release
+matrix:
+  fast_finish: true
+  allow_failures:
+    - node_js: "0.11"
+    - node_js: "0.9"
+    - node_js: "iojs-v1.1"
+    - node_js: "iojs-v1.0"
