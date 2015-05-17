@@ -31,7 +31,9 @@ because it demands the binary protocol.
 
 ## Installation
 
-`npm install memcached`
+```
+npm install memcached
+```
 
 ## Setting up the client
 
