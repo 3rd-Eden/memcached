@@ -29,6 +29,10 @@ the server, which means that you can see what is send over the wire. For debuggi
 for both the users and the developers however this also means that SASL auth is not supported
 because it demands the binary protocol.
 
+## Installation
+
+`npm install memcached`
+
 ## Setting up the client
 
 The constructor of the `memcached` client take 2 different arguments `server
