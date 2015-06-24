@@ -461,7 +461,7 @@ Due to client dependent type flags it is unlikely that any types other than `str
 
 This project wouldn't be possible without the hard work of our amazing
 contributors. See the contributors tab in Github for an up to date list of
-[contributors](/3rd-Eden/node-memcached/graphs/contributors).
+[contributors](https://github.com/3rd-Eden/memcached/graphs/contributors).
 
 Thanks for all your hard work on this project!
 
