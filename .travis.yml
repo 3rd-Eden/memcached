@@ -6,8 +6,9 @@ node_js:
   - "0.10"
   - "0.9"
   - "0.8"
-  - "iojs-v1.1"
-  - "iojs-v1.0"
+  - "iojs-v1"
+  - "iojs-v2"
+  - "iojs"
 
 # Create a Travis memcached enabled environment for the test suite to run in and
 # ensure that we test against localhost on Travis-CI.
@@ -33,5 +34,6 @@ matrix:
   allow_failures:
     - node_js: "0.11"
     - node_js: "0.9"
-    - node_js: "iojs-v1.1"
-    - node_js: "iojs-v1.0"
+    - node_js: "iojs-v1"
+    - node_js: "iojs-v2"
+    - node_js: "iojs"
