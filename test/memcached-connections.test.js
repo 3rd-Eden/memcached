@@ -172,7 +172,7 @@ describe('Memcached connections', function () {
                   memcached.end();
                   done();
                 });
-              }, 150);
+              }, 2500);
             });
           });
       },10);
