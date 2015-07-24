@@ -180,12 +180,12 @@ describe('Memcached connections', function () {
   });
   it('should default to port 11211', function(done) {
     // Use an IP without port
-    var server = '127.0.0.1'
+    var server = common.servers.single.split(':')[0]
     , memcached = new Memcached(server);
 
     memcached.get('idontcare', function(err) {
       assert.ifError(err);
-      assert.equal(Object.keys(memcached.connections)[0], '127.0.0.1:11211');
+      assert.equal(Object.keys(memcached.connections)[0], server + ':11211');
       memcached.end();
       done();
     });
