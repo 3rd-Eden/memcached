@@ -200,7 +200,33 @@ describe('Memcached connections', function () {
       failures: 0 });
 
     memcached.get('idontcare', function(err) {
-      assert.throws(function() { throw err }, /Timed out while trying to establish connection/);
+      assert.throws(function() { throw err }, /Timed out while trying to establish connection|EHOSTUNREACH/);
+      memcached.end();
+      done();
+    });
+  });
+  it('should return memcached version (single)', function(done){
+    var memcached = new Memcached(common.servers.single, {
+      retries: 0,
+      timeout: 100,
+      idle: 100,
+      failures: 0 });
+    memcached.version(function(err, v) {
+      assert(v[0].version);
+      memcached.end();
+      done();
+    });
+  });
+  it('should return memcached version (multi)', function(done){
+    var memcached = new Memcached(common.servers.multi, {
+      retries: 0,
+      timeout: 100,
+      idle: 100,
+      failures: 0 });
+    memcached.version(function(err, v) {
+      assert(v[0].version);
+      assert(v[1].version);
+      assert(v[2].version);
       memcached.end();
       done();
     });
@@ -218,7 +244,7 @@ describe('Memcached connections', function () {
         assert.deepEqual(memcached.connections[common.servers.single].pool.length, 0);
         memcached.end();
         done();
-      }, 100);
+      }, 105);
     });
   });
   it('should remove server if error occurs after connection established', function(done) {
