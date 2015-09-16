@@ -625,4 +625,28 @@ describe("Memcached GET SET", function() {
       done();
     });
   });
+
+  /**
+   * Set value size just under maximum amount of data (1MB),
+   * should trigger error, not crash. The actual value size to trigger the
+   * error should be value length + key length + length of metadata stored with the
+   * key value pair.
+   */
+  it("set value length just under maximum data and check for correct error handling", function(done) {
+    var memcached = new Memcached(common.servers.single)
+      , message = new Array(32767).join('ThisIsMyTestMessageForThisData32')
+      , testnr = ++global.testnumbers
+      , callbacks = 0;
+    //Length of message is 1048512
+    memcached.set("test:" + testnr, message, 1000, function(error, ok){
+      ++callbacks;
+
+      assert.equal(error, 'Error: The length of the value is greater than 1048576');
+      ok.should.be.false;
+
+      memcached.end(); // close connections
+      assert.equal(callbacks, 1);
+      done();
+    });
+  });
 });
