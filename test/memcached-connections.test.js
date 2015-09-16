@@ -190,6 +190,17 @@ describe('Memcached connections', function () {
       done();
     });
   });
+  it('should not add port 11211 for sockets', function(done) {
+    var server = '/tmp/.memcached.sock'
+    , memcached = new Memcached(server);
+
+    memcached.get('idontcare', function(err) {
+      assert.ifError(err);
+      assert.equal(Object.keys(memcached.connections)[0], server);
+      memcached.end();
+      done();
+    });
+  });  
   it('should return error on connection timeout', function(done) {
     // Use a non routable IP
     var server = '10.255.255.255:1234'
