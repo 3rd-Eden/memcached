@@ -218,7 +218,7 @@ describe('Memcached connections', function () {
         assert.deepEqual(memcached.connections[common.servers.single].pool.length, 0);
         memcached.end();
         done();
-      }, 100);
+      }, 110);
     });
   });
   it('should remove server if error occurs after connection established', function(done) {
