@@ -190,6 +190,23 @@ describe('Memcached connections', function () {
       done();
     });
   });
+  it('should not create multiple connections with no port', function(done) {
+    // Use an IP without port
+    var server = '127.0.0.1'
+    , memcached = new Memcached(server)
+    , conn;
+
+    memcached.get('idontcare', function(err) {
+      assert.ifError(err);
+      conn = memcached.connections['127.0.0.1:11211'];
+      memcached.get('idontcare', function(err) {
+        assert.ifError(err);
+        assert.equal(memcached.connections['127.0.0.1:11211'], conn);
+        memcached.end();
+        done();
+      });
+    });
+  });
   it('should return error on connection timeout', function(done) {
     // Use a non routable IP
     var server = '10.255.255.255:1234'
