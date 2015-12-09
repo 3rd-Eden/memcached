@@ -1,4 +1,4 @@
-# Memcached [![Build Status](https://secure.travis-ci.org/3rd-Eden/node-memcached.png?branch=master)](http://travis-ci.org/3rd-Eden/node-memcached)
+# Memcached [![Build Status](https://secure.travis-ci.org/3rd-Eden/memcached.svg?branch=master)](http://travis-ci.org/3rd-Eden/memcached)
 
 `memcached` is a fully featured Memcached client for Node.js. `memcached` is
 built with scaling, high availability and exceptional performance in mind. We
