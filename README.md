@@ -439,7 +439,7 @@ issues occur.
 * `issue`: a issue occurred on one a server, we are going to attempt a retry next.
 * `failure`: a server has been marked as failure or dead.
 * `reconnecting`: we are going to attempt to reconnect the to the failed server.
-* `reconnected`: successfully reconnected to the memcached server.
+* `reconnect`: successfully reconnected to the memcached server.
 * `remove`: removing the server from our consistent hashing.
 
 Example implementations:
