@@ -15,7 +15,7 @@ global.testnumbers = global.testnumbers || +(Math.random(10) * 1000000).toFixed(
  * Expresso test suite for all `get` related
  * memcached commands
  */
-describe("Memcached GET SET", function() {
+describe("Memcached GET SET with single Unix Socket", function() {
   /**
    * Make sure that the string that we send to the server is correctly
    * stored and retrieved. We will be storing random strings to ensure
