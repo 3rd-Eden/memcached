@@ -17,6 +17,11 @@ global.testnumbers = global.testnumbers || +(Math.random(10) * 1000000).toFixed(
  * Test connection issues
  */
 describe('Memcached connections', function () {
+  it('should instantiate client when not called with new', function(done) {
+    var memcached = Memcached('127.0.0.1:1234', {});
+    memcached.end();
+    done();
+  });
   it('should call the callback only once if theres an error', function (done) {
     var memcached = new Memcached('127.0.1:1234', { retries: 3 })
       , calls = 0;
