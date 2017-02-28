@@ -177,7 +177,7 @@ describe('Memcached connections', function () {
                   memcached.end();
                   done();
                 });
-              }, 150);
+              }, 2500);
             });
           });
       },10);
@@ -185,12 +185,12 @@ describe('Memcached connections', function () {
   });
   it('should default to port 11211', function(done) {
     // Use an IP without port
-    var server = '127.0.0.1'
+    var server = common.servers.single.split(':')[0]
     , memcached = new Memcached(server);
 
     memcached.get('idontcare', function(err) {
       assert.ifError(err);
-      assert.equal(Object.keys(memcached.connections)[0], '127.0.0.1:11211');
+      assert.equal(Object.keys(memcached.connections)[0], server + ':11211');
       memcached.end();
       done();
     });
@@ -214,7 +214,7 @@ describe('Memcached connections', function () {
   });
   it('should return error on connection timeout', function(done) {
     // Use a non routable IP
-    var server = '10.255.255.255:1234'
+    var server = '10.0.1.1:1234'
     , memcached = new Memcached(server, {
       retries: 0,
       timeout: 100,
@@ -264,7 +264,7 @@ describe('Memcached connections', function () {
     });
   });
   it('should reset failures if all failures do not occur within failuresTimeout ms', function(done) {
-    var server = '10.255.255.255:1234'
+    var server = '10.0.1.1:1234'
     , memcached = new Memcached(server, {
       retries: 0,
       timeout: 10,
