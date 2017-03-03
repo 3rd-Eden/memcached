@@ -93,6 +93,8 @@ Memcached server uses the same properties:
  that are removed from the consistent hashing scheme.
 * `keyCompression`: *true*, whether to use `md5` as hashing scheme when keys exceed `maxKeySize`.
 * `idle`: *5000*, the idle timeout for the connections.
+* `encoding`: *utf8*, whether to use `utf8` as encoding while converting data from socket connection or the passed encoding.
+* `zlibInflate`: *false*, whether to use zlib to inflate the incoming data.
 
 Example usage:
 
