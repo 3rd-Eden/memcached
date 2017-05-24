@@ -233,4 +233,45 @@ describe('Memcached tests with Namespaces', function () {
         });
     });
   });
+
+  it('should allow namespaces on CAS', function(done) {
+    var memcached = new Memcached(common.servers.single, {
+        namespace:'someNamespace:'
+    }), callbacks = 0;
+    
+    // put a value
+    memcached.set('testCas', 1, 1000, function(error, ok) {
+        callbacks++;
+        assert.ok(!error);
+        ok.should.be.true;
+
+        memcached.gets('testCas', function (error, answer) {
+            ++callbacks;
+
+            assert.ok(!error);
+
+            assert.ok(typeof answer === 'object');
+            assert.ok(!!answer.cas);
+            assert.ok(!!answer.testCas);
+            answer['testCas'].should.eql(1);
+
+            memcached.cas('testCas', 2, answer.cas, 1000, function (error, answer) {
+                ++callbacks;
+                assert.ok(!error);
+                assert.ok(!!answer);
+            
+                memcached.get('testCas', function (error, answer) {
+                    ++callbacks;
+
+                    assert.ok(!error);
+                    answer.should.eql(2);
+
+                    memcached.end(); // close connections
+                    assert.equal(callbacks, 4);
+                    done();
+                });
+            });
+        });
+    });
+  });
 });
