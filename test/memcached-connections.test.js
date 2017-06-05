@@ -137,7 +137,7 @@ describe('Memcached connections', function () {
         assert.throws(function() { throw err }, /not available/);
         // Allow enough time to pass for a connection retries to occur
         setTimeout(function() {
-          assert.deepEqual(reconnectAttempts, 1);
+          assert.deepEqual(reconnectAttempts, 3);
           memcached.end();
           done();
         }, 400);
@@ -166,18 +166,10 @@ describe('Memcached connections', function () {
           assert.throws(function() { throw err }, /connect ECONNREFUSED/);
             // Third request should find no servers
             memcached.get('idontcare', function(err) {
-            assert.throws(function() { throw err }, /not available/);
-              // Give enough time for server to reconnect
-              setTimeout(function() {
-                // Server should be reconnected, but expect ECONNREFUSED
-                memcached.get('idontcare', function(err) {
-                  assert.throws(function() { throw err }, /connect ECONNREFUSED/);
-                  assert.deepEqual(memcached.issues[server].failures,
-                    memcached.issues[server].config.failures);
-                  memcached.end();
-                  done();
-                });
-              }, 150);
+              assert.throws(function() { throw err }, /not available/);
+              assert.deepEqual(memcached.issues[server].failures, 0);
+              memcached.end();
+              done();
             });
           });
       },10);
