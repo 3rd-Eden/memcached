@@ -625,4 +625,17 @@ describe("Memcached GET SET", function() {
       done();
     });
   });
+
+  /*
+    Make sure that getMulti works with empty keys
+  */
+  it("make sure you can getMulti really long keys", function (done) {
+    var memcached = new Memcached(common.servers.single);
+
+    memcached.getMulti([], function (error, ok) {
+      assert.deepEqual(ok, {});
+      memcached.end();
+      done();
+    });
+  });
 });
