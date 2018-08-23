@@ -1,0 +1,16 @@
+version: '2'
+services:
+  memcached-one:
+    image: memcached:latest
+    ports:
+      - "11211:11211"
+
+  memcached-two:
+    image: memcached:latest
+    ports:
+      - "11212:11211"
+
+  memcached-three:
+    image: memcached:latest
+    ports:
+      - "11213:11211"

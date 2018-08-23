@@ -1,4 +1,9 @@
-# Memcached [![Build Status](https://secure.travis-ci.org/3rd-Eden/memcached.svg?branch=master)](http://travis-ci.org/3rd-Eden/memcached)
+## Notice
+
+This is forked from [memcached](https://github.com/3rd-Eden/memcached). This fork will
+soon be rewritten in TypeScript. For now the types have been moved into this repo.
+
+# Memcached
 
 `memcached` is a fully featured Memcached client for Node.js. `memcached` is
 built with scaling, high availability and exceptional performance in mind. We

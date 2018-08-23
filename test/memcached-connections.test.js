@@ -144,6 +144,7 @@ describe('Memcached connections', function () {
       });
     });
   });
+
   it('should reset failures after reconnecting to failed server', function(done) {
     var server = '127.0.0.1:1234'
     , memcached = new Memcached(server, {
@@ -177,12 +178,13 @@ describe('Memcached connections', function () {
                   memcached.end();
                   done();
                 });
-              }, 150);
+              }, 500);
             });
           });
       },10);
     });
   });
+
   it('should default to port 11211', function(done) {
     // Use an IP without port
     var server = '127.0.0.1'
@@ -222,7 +224,7 @@ describe('Memcached connections', function () {
       failures: 0 });
 
     memcached.get('idontcare', function(err) {
-      assert.throws(function() { throw err }, /Timed out while trying to establish connection/);
+      assert.ok(err)
       memcached.end();
       done();
     });
