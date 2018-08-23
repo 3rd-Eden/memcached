@@ -1,0 +1,93 @@
+defaults: &defaults
+  working_directory: ~/memcached
+  docker:
+    - image: circleci/node:8.9.4
+
+version: 2
+executorType: machine
+jobs:
+  test_node_6:
+    <<: *defaults
+    docker:
+      - image: circleci/node:6.12.3
+    steps:
+      - checkout
+      - run:
+          name: Install NPM Dependencies
+          command: npm install
+      - run:
+          name: Run Test Suite
+          command: npm test
+
+  test_node_8:
+    <<: *defaults
+    steps:
+      - checkout
+      - run:
+          name: Install NPM Dependencies
+          command: npm install
+      - run:
+          name: Run Test Suite
+          command: npm test
+
+  publish:
+    <<: *defaults
+    steps:
+      - checkout
+      - run:
+          name: Generate .npmrc File
+          command: 'echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc'
+      - run:
+          name: Install NPM Dependencies
+          command: npm install
+      - run:
+          name: Publish to NPM
+          command: npm publish --access public
+
+  publish_next:
+    <<: *defaults
+    steps:
+      - checkout
+      - run:
+          name: Generate .npmrc File
+          command: 'echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc'
+      - run:
+          name: Install NPM Dependencies
+          command: npm install
+      - run:
+          name: Publish to NPM
+          command: npm publish --tag next --access public
+
+workflows:
+  version: 2
+  build_publish:
+      jobs:
+        - test_node_6:
+            filters:
+              tags:
+                only: /.*/
+
+        - test_node_8:
+            filters:
+              tags:
+                only: /.*/
+
+        - publish:
+            requires:
+              - test_node_6
+              - test_node_8
+            filters:
+              tags:
+                only: /^(v){1}[0-9]+(\.[0-9]+){2}$/
+              branches:
+                ignore: /.*/
+
+        - publish_next:
+            requires:
+              - test_node_6
+              - test_node_8
+            filters:
+              tags:
+                only: /^(v){1}[0-9]+(\.[0-9]+){2}(-)[0-9]+$/
+              branches:
+                ignore: /.*/

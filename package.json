@@ -1,9 +1,13 @@
 {
-  "name": "memcached",
+  "name": "@creditkarma/memcached",
   "version": "2.2.2",
   "author": "Arnout Kazemier",
   "description": "A fully featured Memcached API client, supporting both single and clustered Memcached servers through consistent hashing and failover/failure. Memcached is rewrite of nMemcached, which will be deprecated in the near future.",
   "main": "index",
+  "files": [
+    "index.js",
+    "lib"
+  ],
   "keywords": [
     "InnoDB memcached API",
     "cache",
@@ -17,21 +21,27 @@
     "nMemcached",
     "nosql"
   ],
+  "scripts": {
+    "clean-all": "rimraf node_modules/ package-lock.json",
+    "docker": "docker-compose up --force-recreate &",
+    "docker:kill": "docker-compose kill",
+    "pretest": "npm run docker:kill && npm run docker",
+    "test": "wait-on --timeout 20000 tcp:11211 tcp:11212 tcp:11213 && mocha --opts mocha.opts"
+  },
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "http://github.com/3rd-Eden/node-memcached.git"
   },
   "dependencies": {
-    "hashring": "3.2.x",
+    "hashring": "^3.2.0",
     "jackpot": ">=0.0.6"
   },
   "devDependencies": {
-    "mocha": "*",
-    "should": "*",
-    "pre-commit": "*"
-  },
-  "scripts": {
-    "test": "mocha $(find test -name '*.test.js')"
+    "mocha": "^5.2.0",
+    "rimraf": "^2.6.2",
+    "should": "^13.2.3",
+    "pre-commit": "^1.2.2",
+    "wait-on": "^2.1.0"
   }
 }
