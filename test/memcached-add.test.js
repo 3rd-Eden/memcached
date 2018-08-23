@@ -24,21 +24,13 @@ describe('Memcached ADD', () => {
             , testnr = ++global.testnumbers
             , callbacks = 0;
 
-            console.log('set')
-
         memcached.set('test:' + testnr, message, 1000, (err, ok) => {
             ++callbacks;
-
-            console.log('err: ', err)
-            console.log('ok: ', ok)
             assert.ok(!err);
             ok.should.be.true;
 
             memcached.add('test:' + testnr, message, 1000, (err, answer) => {
                 ++callbacks;
-
-                console.log('err: ', err)
-                console.log('answer: ', answer)
 
                 assert.ok(err);
 

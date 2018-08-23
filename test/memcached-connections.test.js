@@ -159,23 +159,19 @@ describe('Memcached connections', function () {
 
     // First request will mark server failed
     memcached.get('idontcare', function(err) {
-        console.log('err 1: ', err)
       assert.throws(function() { throw err }, /connect ECONNREFUSED/);
       // Wait 10ms, server should be back online
       setTimeout(function() {
         // Second request will mark server dead
         memcached.get('idontcare', function(err) {
-            console.log('err 2: ', err)
           assert.throws(function() { throw err }, /connect ECONNREFUSED/);
             // Third request should find no servers
             memcached.get('idontcare', function(err) {
-                console.log('err 3: ', err)
             assert.throws(function() { throw err }, /not available/);
               // Give enough time for server to reconnect
               setTimeout(function() {
                 // Server should be reconnected, but expect ECONNREFUSED
                 memcached.get('idontcare', function(err) {
-                    console.log('err 4: ', err)
                   assert.throws(function() { throw err }, /connect ECONNREFUSED/);
                   assert.deepEqual(memcached.issues[server].failures,
                     memcached.issues[server].config.failures);
