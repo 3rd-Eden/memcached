@@ -1,11 +1,10 @@
 # Ensure that we only run CI test on the Node.js enabled servers.
 language: node_js
 node_js:
-  - "0.8"
-  - "0.10"
-  - "0.12"
   - "4"
   - "5"
+  - "6"
+  - "8"
 
 # Create a Travis memcached enabled environment for the test suite to run in and
 # ensure that we test against localhost on Travis-CI.
