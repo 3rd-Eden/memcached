@@ -32,6 +32,6 @@
     "pre-commit": "*"
   },
   "scripts": {
-    "test": "mocha $(find test -name '*.test.js')"
+    "test": "mocha $(find test -name '*.test.js') --exit"
   }
 }
