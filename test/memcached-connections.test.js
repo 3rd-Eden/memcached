@@ -214,7 +214,8 @@ describe('Memcached connections', function () {
   });
   it('should return error on connection timeout', function(done) {
     // Use a non routable IP
-    var server = '10.255.255.255:1234'
+    // why this IP: https://en.wikipedia.org/wiki/Reserved_IP_addresses#cite_note-rfc5737-5
+    var server = '203.0.113.255:1234'
     , memcached = new Memcached(server, {
       retries: 0,
       timeout: 100,
@@ -264,7 +265,7 @@ describe('Memcached connections', function () {
     });
   });
   it('should reset failures if all failures do not occur within failuresTimeout ms', function(done) {
-    var server = '10.255.255.255:1234'
+    var server = '203.0.113.255:1234'
     , memcached = new Memcached(server, {
       retries: 0,
       timeout: 10,
