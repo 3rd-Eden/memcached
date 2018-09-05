@@ -222,7 +222,7 @@ memcached.append('foo', 'bar', function (err) { /* stuff */ });
 * `callback`: **Function** the callback
 
 ```js
-memcached.preprend('foo', 'bar', function (err) { /* stuff */ });
+memcached.prepend('foo', 'bar', function (err) { /* stuff */ });
 ```
 
 **memcached.incr** Increment a given key.
