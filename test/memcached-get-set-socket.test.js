@@ -15,14 +15,14 @@ global.testnumbers = global.testnumbers || +(Math.random(10) * 1000000).toFixed(
  * Expresso test suite for all `get` related
  * memcached commands
  */
-describe("Memcached GET SET", function() {
+describe("Memcached GET SET with single Unix Socket", function() {
   /**
    * Make sure that the string that we send to the server is correctly
    * stored and retrieved. We will be storing random strings to ensure
    * that we are not retrieving old data.
    */
   it("set and get a regular string", function(done) {
-    var memcached = new Memcached(common.servers.single)
+    var memcached = new Memcached(common.servers.singleSocket)
       , message = common.alphabet(256)
       , testnr = ++global.testnumbers
       , callbacks = 0;
@@ -50,7 +50,7 @@ describe("Memcached GET SET", function() {
   });
 
   it("set and get an empty string", function(done) {
-    var memcached = new Memcached(common.servers.single)
+    var memcached = new Memcached(common.servers.singleSocket)
       , testnr = ++global.testnumbers
       , callbacks = 0;
 
@@ -81,7 +81,7 @@ describe("Memcached GET SET", function() {
    * this should not be flagged as JSON object
    */
   it("set and get a JSON.stringify string", function(done) {
-    var memcached = new Memcached(common.servers.single)
+    var memcached = new Memcached(common.servers.singleSocket)
       , message = JSON.stringify({numbers:common.numbers(256),alphabet:common.alphabet(256),dates:new Date(),arrays: [1,2,3, 'foo', 'bar']})
       , testnr = ++global.testnumbers
       , callbacks = 0;
@@ -114,7 +114,7 @@ describe("Memcached GET SET", function() {
    * than "str".length would show, causing the memcached server to complain.
    */
   it("set and get a regular string", function(done) {
-    var memcached = new Memcached(common.servers.single)
+    var memcached = new Memcached(common.servers.singleSocket)
       , message = 'привет мир, Memcached и nodejs для победы'
       , testnr = ++global.testnumbers
       , callbacks = 0;
@@ -145,7 +145,7 @@ describe("Memcached GET SET", function() {
    * that does not exist anymore.
    */
   it("get a non existing key", function(done) {
-    var memcached = new Memcached(common.servers.single)
+    var memcached = new Memcached(common.servers.singleSocket)
       , testnr = ++global.testnumbers
       , callbacks = 0;
 
@@ -167,7 +167,7 @@ describe("Memcached GET SET", function() {
    * think that it was a INCR and not a SET operation.. So just to make sure..
    */
   it("set and get a regular number", function(done) {
-    var memcached = new Memcached(common.servers.single)
+    var memcached = new Memcached(common.servers.singleSocket)
       , message = common.numbers(256)
       , testnr = ++global.testnumbers
       , callbacks = 0;
@@ -198,7 +198,7 @@ describe("Memcached GET SET", function() {
    * and be automagically JSON.parsed when they are retrieved.
    */
   it("set and get a object", function(done) {
-    var memcached = new Memcached(common.servers.single)
+    var memcached = new Memcached(common.servers.singleSocket)
       , message = {
           numbers: common.numbers(256)
         , alphabet: common.alphabet(256)
@@ -233,7 +233,7 @@ describe("Memcached GET SET", function() {
    * and be automagically JSON.parsed when they are retrieved.
    */
   it("set and get a array", function(done) {
-    var memcached = new Memcached(common.servers.single)
+    var memcached = new Memcached(common.servers.singleSocket)
       , message = [{
             numbers: common.numbers(256)
           , alphabet: common.alphabet(256)
@@ -276,7 +276,7 @@ describe("Memcached GET SET", function() {
    * buffer is in.
    */
   it("set and get <buffers> with a binary image", function(done) {
-    var memcached = new Memcached(common.servers.single)
+    var memcached = new Memcached(common.servers.singleSocket)
       , message = fs.readFileSync(__dirname + '/fixtures/hotchicks.jpg')
       , testnr = ++global.testnumbers
       , callbacks = 0;
@@ -308,7 +308,7 @@ describe("Memcached GET SET", function() {
    * memcached as a single cache pool..
    */
   it("set and get <buffers> with a binary text file", function(done) {
-    var memcached = new Memcached(common.servers.single)
+    var memcached = new Memcached(common.servers.singleSocket)
       , message = fs.readFileSync(__dirname + '/fixtures/lipsum.txt')
       , testnr = ++global.testnumbers
       , callbacks = 0;
@@ -336,7 +336,7 @@ describe("Memcached GET SET", function() {
    * Set maximum amount of data (1MB), should trigger error, not crash.
    */
   it("set maximum data and check for correct error handling", function(done) {
-    var memcached = new Memcached(common.servers.single)
+    var memcached = new Memcached(common.servers.singleSocket)
       , message = fs.readFileSync(__dirname + '/fixtures/lipsum.txt').toString()
       , testnr = ++global.testnumbers
       , callbacks = 0;
@@ -358,7 +358,7 @@ describe("Memcached GET SET", function() {
    * without any issues.
    */
   it("set and get large text files", function(done) {
-    var memcached = new Memcached(common.servers.single)
+    var memcached = new Memcached(common.servers.singleSocket)
       , message = fs.readFileSync(__dirname + '/fixtures/lipsum.txt', 'utf8')
       , testnr = ++global.testnumbers
       , callbacks = 0;
@@ -389,7 +389,7 @@ describe("Memcached GET SET", function() {
    * yes, that's allot of multi's in one single sentence thanks for noticing
    */
   it("multi get single server", function(done) {
-     var memcached = new Memcached(common.servers.single)
+     var memcached = new Memcached(common.servers.singleSocket)
       , message = common.alphabet(256)
       , message2 = common.alphabet(256)
       , testnr = ++global.testnumbers
@@ -470,7 +470,7 @@ describe("Memcached GET SET", function() {
    * a command response.
    */
   it("set and get a string beginning with OK", function(done) {
-    var memcached = new Memcached(common.servers.single)
+    var memcached = new Memcached(common.servers.singleSocket)
       , message = 'OK123456'
       , testnr = ++global.testnumbers
       , callbacks = 0;
@@ -501,7 +501,7 @@ describe("Memcached GET SET", function() {
    * a command response.
    */
   it("set and get a string beginning with VALUE", function(done) {
-    var memcached = new Memcached(common.servers.single)
+    var memcached = new Memcached(common.servers.singleSocket)
       , message = 'VALUE hello, I\'m not really a value.'
       , testnr = ++global.testnumbers
       , callbacks = 0;
@@ -532,7 +532,7 @@ describe("Memcached GET SET", function() {
    * unescaped correctly.
    */
   it("set and get a string with line breaks", function(done) {
-    var memcached = new Memcached(common.servers.single)
+    var memcached = new Memcached(common.servers.singleSocket)
       , message = '1\n2\r\n3\n\r4\\n5\\r\\n6\\n\\r7'
       , testnr = ++global.testnumbers
       , callbacks = 0;
@@ -562,7 +562,7 @@ describe("Memcached GET SET", function() {
    * Make sure long keys are hashed
    */
   it("make sure you can get really long strings", function(done) {
-    var memcached = new Memcached(common.servers.single)
+    var memcached = new Memcached(common.servers.singleSocket)
       , message = 'VALUE hello, I\'m not really a value.'
       , testnr = "01234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"+(++global.testnumbers)
       , callbacks = 0;
@@ -592,7 +592,7 @@ describe("Memcached GET SET", function() {
    * Make sure keys with spaces return an error
    */
   it("errors on spaces in strings", function(done) {
-    var memcached = new Memcached(common.servers.single)
+    var memcached = new Memcached(common.servers.singleSocket)
       , message = 'VALUE hello, I\'m not really a value.'
       , testnr = " "+(++global.testnumbers)
       , callbacks = 0;
@@ -612,7 +612,7 @@ describe("Memcached GET SET", function() {
     If the keys aren't hashed because they are too long, memcached will throw exceptions, so we need to make sure that exceptions aren't thrown.
   */
   it("make sure you can getMulti really long keys", function(done) {
-    var memcached = new Memcached(common.servers.single)
+    var memcached = new Memcached(common.servers.singleSocket)
       , message = 'My value is not relevant'
       , testnr1 = "01234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"+(++global.testnumbers)
       , testnr2 = "01234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"+(global.testnumbers)+"a"

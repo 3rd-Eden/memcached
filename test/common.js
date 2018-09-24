@@ -15,13 +15,16 @@
  * @api public
  */
 var testMemcachedHost = process.env.MEMCACHED__HOST || '10.211.55.5';
+var testMemcachedSocketPath = process.env.MEMCACHED__SOCKET_PATH;
 
 exports.servers = {
-    single: testMemcachedHost + ':11211'
+    single: testMemcachedHost + ':11211',
+    singleSocket: testMemcachedSocketPath
   , multi: [
       testMemcachedHost + ':11211'
     , testMemcachedHost + ':11212'
     , testMemcachedHost + ':11213'
+    , testMemcachedSocketPath
   ]
 };
 
