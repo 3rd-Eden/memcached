@@ -122,46 +122,32 @@ Memcached.config.poolSize = 25;
 
 * `key`: **String** The key
 * `lifetime`: **Number** After how long should the key expire measured in `seconds`
-* `callback`: **Function**
 
 ```js
-memcached.touch('key', 10, function (err) { /* stuff */ });
+await memcached.touch('key', 10)
 ```
 
 **memcached.get** Get the value for the given key.
 
 * `key`: **String**, the key
-* `callback`: **Function**, the callback.
 
 ```js
-memcached.get('foo', function (err, data) {
-  console.log(data);
-});
+const value = await memcached.get('key')
 ```
 
 **memcached.gets** Get the value and the CAS id.
 
 * `key`: **String**, the key
-* `callback`: **Function**, the callback.
 
 ```js
-memcached.gets('foo', function (err, data) {
-  console.log(data.foo);
-  console.log(data.cas);
-
-  // Please note that the data is stored under the name of the given key.
-});
+const { cas, foo } = await memcached.gets('foo')
 ```
 **memcached.getMulti** Retrieves a bunch of values from multiple keys.
 
 * `keys`: **Array**, all the keys that needs to be fetched
-* `callback`: **Function**, the callback.
 
 ```js
-memcached.getMulti(['foo', 'bar'], function (err, data) {
-  console.log(data.foo);
-  console.log(data.bar);
-});
+const { bar, foo } = await memcached.getMulti(['foo', 'bar'])
 ```
 
 **memcached.set** Stores a new value in Memcached.
@@ -169,10 +155,9 @@ memcached.getMulti(['foo', 'bar'], function (err, data) {
 * `key`: **String** the name of the key
 * `value`: **Mixed** Either a buffer, JSON, number or string that you want to store.
 * `lifetime`: **Number**, how long the data needs to be stored measured in `seconds`
-* `callback`: **Function** the callback
 
 ```js
-memcached.set('foo', 'bar', 10, function (err) { /* stuff */ });
+await memcached.set('foo', 'bar', 10)
 ```
 
 **memcached.replace** Replaces the value in memcached.
@@ -180,10 +165,9 @@ memcached.set('foo', 'bar', 10, function (err) { /* stuff */ });
 * `key`: **String** the name of the key
 * `value`: **Mixed** Either a buffer, JSON, number or string that you want to store.
 * `lifetime`: **Number**, how long the data needs to be replaced measured in `seconds`
-* `callback`: **Function** the callback
 
 ```js
-memcached.replace('foo', 'bar', 10, function (err) { /* stuff */ });
+await memcached.replace('foo', 'bar', 10)
 ```
 
 **memcached.add** Add the value, only if it's not in memcached already.
@@ -191,10 +175,9 @@ memcached.replace('foo', 'bar', 10, function (err) { /* stuff */ });
 * `key`: **String** the name of the key
 * `value`: **Mixed** Either a buffer, JSON, number or string that you want to store.
 * `lifetime`: **Number**, how long the data needs to be replaced measured in `seconds`
-* `callback`: **Function** the callback
 
 ```js
-memcached.add('foo', 'bar', 10, function (err) { /* stuff */ });
+await memcached.add('foo', 'bar', 10)
 ```
 
 **memcached.cas** Add the value, only if it matches the given CAS value.
@@ -203,204 +186,107 @@ memcached.add('foo', 'bar', 10, function (err) { /* stuff */ });
 * `value`: **Mixed** Either a buffer, JSON, number or string that you want to store.
 * `lifetime`: **Number**, how long the data needs to be replaced measured in `seconds`
 * `cas`: **String** the CAS value
-* `callback`: **Function** the callback
 
 ```js
-memcached.gets('foo', function (err, data) {
-  memcached.cas('foo', 'bar', data.cas, 10, function (err) { /* stuff */ });
-});
+const { cas } = await memcached.gets('foo')
+await memcached.cas('foo', 'bar', cas, 10)
 ```
 
 **memcached.append** Add the given value string to the value of an existing item.
 
 * `key`: **String** the name of the key
 * `value`: **Mixed** Either a buffer, JSON, number or string that you want to store.
-* `callback`: **Function** the callback
 
 ```js
-memcached.append('foo', 'bar', function (err) { /* stuff */ });
+await memcached.append('foo', 'bar');
 ```
 
 **memcached.prepend** Add the given value string to the value of an existing item.
 
 * `key`: **String** the name of the key
 * `value`: **Mixed** Either a buffer, JSON, number or string that you want to store.
-* `callback`: **Function** the callback
 
 ```js
-memcached.prepend('foo', 'bar', function (err) { /* stuff */ });
+await memcached.prepend('foo', 'bar');
 ```
 
 **memcached.incr** Increment a given key.
 
 * `key`: **String** the name of the key
 * `amount`: **Number** The increment
-* `callback`: **Function** the callback
 
 ```js
-memcached.incr('foo', 10, function (err) { /* stuff */ });
+await memcached.incr('foo', 10);
 ```
 
 **memcached.decr** Decrement a given key.
 
 * `key`: **String** the name of the key
 * `amount`: **Number** The increment
-* `callback`: **Function** the callback
 
 ```js
-memcached.decr('foo', 10, function (err) { /* stuff */ });
+await memcached.decr('foo', 10);
 ```
 
 **memcached.del** Remove the key from memcached.
 
 * `key`: **String** the name of the key
-* `callback`: **Function** the callback
 
 ```js
-memcached.del('foo', function (err) { /* stuff */ });
+await memcached.del('foo');
 ```
 
 **memcached.version** Retrieves the version number of your server.
 
-* `callback`
+```js
+const version = await memcached.version()
+```
 
 **memcached.flush** Flushes the memcached server.
 
-* `callback`
+```js
+await memcached.flush()
+```
 
 **memcached.stats** Retrieves stats from your memcached server.
 
-* `callback`
+```js
+const stats = await memcached.stats()
+```
 
 **memcached.settings** Retrieves your `stats settings`.
 
-* `callback`
+```js
+const settings = await memcached.settings()
+```
 
 **memcached.slabs** Retrieves `stats slabs` information.
 
-* `callback`
+```js
+const slabs = await memcached.slabs()
+```
 
 **memcached.items** Retrieves `stats items` information.
 
-* `callback`
+```js
+const items = await memcached.items()
+```
 
 **memcached.cachedump** Inspect cache, see examples for a detailed explanation.
 
 * `server`
 * `slabid`
 * `number`
-* `callback`
+
+```js
+const cache = await memcached.cachedump('serverid', 0, 0)
+```
 
 **memcached.end** Closes all active memcached connections.
 
-### Private methods
-
-The following methods are intended for private usage
-
-**.connect** Fetches or generates a connection for the given server. The supplied callback
-function will receive a reference to the connection as argument.
-If there are issues with the server connection, we are going to respond with cache-miss pattern.
-
-* `server`: *String*, The server that needs a connection, the format must be
-confirm the server_locations specification.
-* `callback`: *Function*, The callback function that receives the net.Stre
-
-``` js
-memcached.connect( '192.168.0.103:11211', function( err, conn ){
-  if( err ) throw new Error( err );
-  console.log( conn.server );
-});
+```js
+memcached.end()
 ```
-
-**.multi** A small wrapper function that makes it easier to query multiple Memcached
-servers. It will return the location for each key or the complete list of
-servers.
-
-* `keys`: *Array* **(optional)**, They keys that needs to be converted to a server.
-* `callback`: *Function*, The callback function for the data, it will be called
-for **each** key. It will be called with 4 arguments:
-
-1. `server`: *String*, The server location.
-2. `key`: *String*, The key associated with the server, if you didn't specify
-   keys, this variable will be undefined.
-3. `index`: *Number*, The current index of the loop
-4. `total`: *Number*, The total amount server retrieved.
-
-``` js
-memcached.multi( false, function( server, key, index, totals ){
-  if( err ) throw new Error( err );
-
-  this.connect( server, function( err, conn ){
-    console.log( "connection ready" )
-  })
-});
-```
-
-**.command** This is the core functionality of the `memcached` client. All public API's are
-routed through this function. It takes care of the argument validations Server
-retrieval ( If the server argument isn't specified ). After all data ready a
-connection is asked for the private `connect` method and the command is written
-to the Memcached server.
-
-* `query`: *Object*, The metaData object, see the `Callbacks` section for the
-specification.
-* `server`: *String*, The server the to connect. This is only needed when the
-metaData object doesn't contain a key property to retrieve the server from.
-
-``` js
-memcached.command({
-  key: 'key', callback: function(){ console.dir( arguments ); },
-
-  // validate the arguments
-  validate: [[ 'key', String ], [ 'callback', Function ]],
-
-  // used for the query
-  type: 'delete',
-  command: 'delete key'
-});
-```
-
-**.connectionIssue** A internal function for logging issues with connections. As there can be various
-of ways that an error occurs we need solid issue manager to handle all these
-cases. For example server could crash or the Memcached server could respond with
-`SERVER ERROR <broken>`.
-
-* `error`: *String*, The actual error message.
-* `Stream`: *net.Stream*, A reference to the connection stream where the error
-occurred on.
-* `callback`: *Function* **(optional)**, The callback function of a potential
-request, it will be marked as cache miss if it was provided
-
-``` js
-memcached.connectionIssue( "Server down", connectionReference );
-```
-
-## Callbacks
-
-Each method requires a callback function. Once this function get executed there
-will be 2 variables applied:
-
-* `error`: A error response if something went wrong while retrieving data from
-  the Memcached server. Depending on the type of request this will either be an
-  string or an Array with multiple errors.
-* `response`: The actual result from the Memcached server. If the response is
-  `false` or `undefined` than a cache miss occurred. Cache misses will also
-  occur when there is an error. So you might want to check on errors first.
-
-When we have a successful response, the context of the callback function will
-shift to a metaData object. The metaData object contains all information that we
-used to generate the request for the Memcached server. The metaData object
-contains the following properties:
-
-* `start`: Date in milliseconds when the request was received
-* `execution`: Total execution time for the request, including response parsing.
-* `callback`: Reference to the callback function
-* `type`: The type of Memcached command
-* `command`: The compiled command that was send through the sockets
-* `validate`: The properties of metaData object that needs type validation.
-
-And all the arguments you have send to the method, this depends on the method
-you have called.
 
 ## Events
 
