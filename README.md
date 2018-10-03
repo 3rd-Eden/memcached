@@ -1,4 +1,10 @@
-# Memcached [![Build Status](https://secure.travis-ci.org/3rd-Eden/memcached.svg?branch=master)](http://travis-ci.org/3rd-Eden/memcached)
+# Memcached 
+[![Build Status](https://secure.travis-ci.org/3rd-Eden/memcached.svg?branch=master)](http://travis-ci.org/3rd-Eden/memcached)
+[![NPM Download](https://img.shields.io/npm/dw/memcached.svg)](https://www.npmjs.com/package/memcached)
+![Node version support](https://img.shields.io/node/v/passport.svg)
+[![NPM Version](https://img.shields.io/npm/v/memcached.svg)](https://www.npmjs.com/package/memcached)
+[![NPM License](https://img.shields.io/npm/l/memcached.svg)](https://www.npmjs.com/package/memcached)
+---
 
 `memcached` is a fully featured Memcached client for Node.js. `memcached` is
 built with scaling, high availability and exceptional performance in mind. We
