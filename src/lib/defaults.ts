@@ -27,6 +27,7 @@ export const DEFAULT_CONFIG: IMemcachedConfig = {
     keyCompression: true,    // compress keys if they are to large (md5)
     namespace: '',           // sentinel to prepend to all memcache keys for namespacing the entries
     debug: false,            // Output the commands and responses
+    encoding: 'utf-8',       // encoding of data when socket as a readable stream
 
     defaultTTL: 600,
     failOverServers: [],

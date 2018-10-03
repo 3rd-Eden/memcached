@@ -58,6 +58,7 @@ export interface IMemcachedConfig {
     keyCompression: boolean
     namespace: string
     debug: boolean
+    encoding: string
     defaultTTL: number
     failOverServers: Array<string>
 }

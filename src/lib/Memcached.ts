@@ -658,7 +658,7 @@ export class Memcached extends EventEmitter {
                         // config the Stream
                         socket.setTimeout(this._config.timeout)
                         socket.setNoDelay(true)
-                        socket.setEncoding('utf8')
+                        socket.setEncoding(this._config.encoding)
                         socket.hosts = [ ...serverHosts ]
 
                         Utils.fuse(socket, {
