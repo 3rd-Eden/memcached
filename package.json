@@ -3,7 +3,22 @@
   "version": "3.0.0",
   "author": "Arnout Kazemier",
   "description": "A fully featured Memcached API client, supporting both single and clustered Memcached servers through consistent hashing and failover/failure. Memcached is rewrite of nMemcached, which will be deprecated in the near future.",
-  "main": "index",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "files": [
+    "lib"
+  ],
+  "scripts": {
+    "clean": "rimraf lib test",
+    "clean-all": "rimraf dist node_modules package-lock.json",
+    "lint": "tslint --fix './src/**/*.ts'",
+    "docker": "docker-compose up --force-recreate &",
+    "docker:kill": "docker-compose kill",
+    "prebuild": "npm run clean",
+    "build": "npm run lint && tsc",
+    "pretest": "npm run build",
+    "test": "mocha --opts mocha.opts"
+  },
   "keywords": [
     "InnoDB memcached API",
     "cache",
@@ -27,11 +42,14 @@
     "jackpot": "^0.0.6"
   },
   "devDependencies": {
-    "mocha": "*",
-    "should": "*",
-    "pre-commit": "*"
-  },
-  "scripts": {
-    "test": "mocha $(find test -name '*.test.js') --exit"
+    "@types/mocha": "^5.2.5",
+    "@types/node": "^10.10.2",
+    "@types/chai": "^4.1.4",
+    "mocha": "^5.2.0",
+    "chai": "^4.1.2",
+    "pre-commit": "^1.2.2",
+    "rimraf": "^2.6.2",
+    "tslint": "^5.11.0",
+    "typescript": "3.0.x"
   }
 }

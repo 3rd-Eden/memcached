@@ -1,1 +1,19 @@
+.DS_Store
+
+# Dependencies
 node_modules
+
+# Build assets
+dist
+
+# Temp files
+tmp
+*.tmp
+
+# Log files
+log
+*.log
+
+# Generated files
+/lib/
+/test/

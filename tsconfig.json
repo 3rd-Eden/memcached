@@ -1,0 +1,21 @@
+{
+    "compilerOptions": {
+        "target": "es6",
+        "module": "commonjs",
+        "moduleResolution": "node",
+        "sourceMap": true,
+        "declaration": true,
+        "rootDir": "./src",
+        "outDir": ".",
+        "noEmitOnError": true,
+        "strict": true,
+        "strictFunctionTypes": false,
+        "noUnusedLocals": false,
+        "pretty": true,
+        "removeComments": true
+    },
+    "exclude": [
+        "node_modules",
+        "dist"
+    ]
+}

@@ -1,0 +1,33 @@
+{
+    "extends": "tslint:recommended",
+    "rules": {
+        "no-bitwise": false,
+        "no-empty": false,
+        "max-line-length": false,
+        "max-classes-per-file": false,
+        "no-empty-interface": false,
+        "object-literal-sort-keys": false,
+        "no-console": false,
+        "no-var-requires": false,
+        "only-arrow-functions": false,
+        "variable-name": [
+            true,
+            "check-format",
+            "allow-leading-underscore"
+        ],
+        "array-type": [
+            true,
+            "generic"
+        ],
+        "semicolon": [
+            true,
+            "never"
+        ],
+        "quotemark": [
+            true,
+            "single",
+            "avoid-escape"
+        ],
+        "object-literal-key-quotes": false
+    }
+}
