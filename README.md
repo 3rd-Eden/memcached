@@ -458,10 +458,17 @@ For compatibility with other [libmemcached](http://libmemcached.org/Clients.html
 Due to client dependent type flags it is unlikely that any types other than `string` will work.
 
 # Test
-You may encounter several problems when run the test. Be sure you already made these preparations:
-1. Start the `memcached` service. (If in Mac env, you can install it via homebrew, and `brew services start memcached`)
-2. Start 3 memcached servers at port 11211, 11212, 11213. (You first service will start at default port 11211, so you need to start 2 other servers manually. `memcached -p 11212 -d`, `memcached -p 11213 -d`)
-3. Run `export MEMCACHED__HOST=localhost` in your terminal. (This will make sure that the test case use `localhost` as your memcached server IP address other than it's default IP)
+You may encounter several problems when run the test if you didn't start up `memcached` service. There are two ways for you to start.
+
+## Manually
+1. Make sure you have installed memcached service. (If in Mac env, you can install it via homebrew, and `brew install memcached`)
+2. Start memcached service. `memcached -p 11211 -d && memcached -p 11212 -d &&  memcached -p 11213 -d`
+
+## Docker
+1. Install `docker CE`. [https://docs.docker.com/install/](https://docs.docker.com/install/)
+2. `npm run docker`
+
+After starting up `memcached` services. Simply run `npm test`.
 
 # Contributors
 
