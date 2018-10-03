@@ -9,7 +9,7 @@ import * as common from './common'
  */
 describe('Memcached connections', () => {
     it('should call the callback only once if theres an error', async () => {
-        const memcached = new Memcached('127.0.1:1234', { retries: 3 })
+        const memcached = new Memcached('127.0.1:1234', { retries: 3, factor: 0.5 })
 
         return memcached.get('idontcare').then((val: any) => {
             memcached.end()
