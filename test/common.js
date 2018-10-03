@@ -6,7 +6,7 @@
  * will get flushed!.
  *
  * If your memcache hosts is not the default one
- * (10.211.55.5), you can pass another one using the
+ * (127.0.0.1), you can pass another one using the
  * environment variable MEMCACHED__HOST. E.g.:
  *
  * MEMCACHED__HOST=localhost npm test
@@ -14,7 +14,7 @@
  * @type {Object}
  * @api public
  */
-var testMemcachedHost = process.env.MEMCACHED__HOST || '10.211.55.5';
+var testMemcachedHost = process.env.MEMCACHED__HOST || '127.0.0.1';
 
 exports.servers = {
     single: testMemcachedHost + ':11211'
