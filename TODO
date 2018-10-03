@@ -25,7 +25,6 @@
 	],
 	
 	"commands": [
-		"multiset",
-		"cas"
+		"multiset"
 	]
 }

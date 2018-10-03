@@ -434,4 +434,28 @@ describe('Memcached GET SET', () => {
             memcached.end()
         })
     })
+
+    /**
+     * Make sure that set expire works fine with unix timestamp format.
+     */
+    it('set unix timestamp expire should be correct', async () => {
+        const memcached = new Memcached(common.servers.single)
+        const testnr = ++(global as any).testnumbers
+
+        // get next 1 second unix timestamp
+        const unixNow = Math.floor(Number(new Date()) / 1000) + 1
+
+        return memcached.set(`test:${testnr}`, 'value', unixNow).then((ok) => {
+            // after 1.1 seconds, should be expired
+            return common.wait(1100).then(() => {
+                return memcached.get(`test:${testnr}`).then((value) => {
+                    if (value === 'value') {
+                        throw new Error('Should reject')
+                    }
+                }, (e) => {
+                    assert.exists(e)
+                })
+            })
+        })
+    })
 })
