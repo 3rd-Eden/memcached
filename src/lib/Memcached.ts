@@ -53,6 +53,10 @@ interface IIssueMap {
     [name: string]: IssueLog
 }
 
+interface IMultiSetMap {
+    [key: string]: any
+}
+
 type MultiStreamOperation =
     (server: string, key: Array<string>, serverIndex: number, totalServers: number) => Promise<any>
 
@@ -296,6 +300,18 @@ export class Memcached extends EventEmitter {
 
             return responses
         })
+    }
+
+    public setMulti(pairs: IMultiSetMap, ttl: number = this._config.defaultTTL): Promise<boolean> {
+        const promises = []
+
+        for (const key of Object.keys(pairs)) {
+            const value = pairs[key]
+
+            promises.push(this.set(key, value, ttl))
+        }
+
+        return Promise.all(promises).then((ok) => true, (e) => false)
     }
 
     // Creates a multi stream, so it's easier to query agains multiple memcached

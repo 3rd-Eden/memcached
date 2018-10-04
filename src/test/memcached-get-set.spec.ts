@@ -322,6 +322,44 @@ describe('Memcached GET SET', () => {
         })
     })
 
+    it('multi set single server', async () => {
+        const memcached = new Memcached(common.servers.single)
+        let testnr = ++(global as any).testnumbers
+        const data: any = {}
+
+        data['test:' + (++testnr)] = common.alphabet(256)
+        data['test:' + (++testnr)] = 1234
+        data['test:' + (++testnr)] = { a: 1, b: 2 }
+        const keys = Object.keys(data)
+
+        return memcached.setMulti(data, 1000).then((ok) => {
+            assert.isTrue(ok)
+
+            return memcached.getMulti(keys).then((res) => {
+                assert.deepEqual(res, data)
+            })
+        })
+    })
+
+    it('multi set multi server', async () => {
+        const memcached = new Memcached(common.servers.multi)
+        let testnr = ++(global as any).testnumbers
+        const data: any = {}
+
+        data['test:' + (++testnr)] = common.alphabet(256)
+        data['test:' + (++testnr)] = 1234
+        data['test:' + (++testnr)] = { a: 1, b: 2 }
+        const keys = Object.keys(data)
+
+        return memcached.setMulti(data, 1000).then((ok) => {
+            assert.isTrue(ok)
+
+            return memcached.getMulti(keys).then((res) => {
+                assert.deepEqual(res, data)
+            })
+        })
+    })
+
     /**
      * Make sure that a string beginning with OK is not interpreted as
      * a command response.

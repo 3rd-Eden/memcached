@@ -161,6 +161,20 @@ const { bar, foo } = await memcached.getMulti(['foo', 'bar'])
 await memcached.set('foo', 'bar', 10)
 ```
 
+**memcached.setMulti** Stores a bunch of values in Memcached.
+
+* `pairs`: **Object** list of values to store as `{ key: value }`
+* `lifetime`: **Number**, how long the data needs to be stored measured in `seconds` (same for all values)
+
+```js
+const data = {
+  key1: 'text',
+  key2: 1234,
+  key3: { a:1, b:2, c:3 }
+}
+await memcached.setMulti(data, 10)
+```
+
 **memcached.replace** Replaces the value in memcached.
 
 * `key`: **String** the name of the key
