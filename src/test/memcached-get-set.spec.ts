@@ -446,14 +446,11 @@ describe('Memcached GET SET', () => {
         const unixNow = Math.floor(Number(new Date()) / 1000) + 1
 
         return memcached.set(`test:${testnr}`, 'value', unixNow).then((ok) => {
-            // after 1.1 seconds, should be expired
-            return common.wait(1100).then(() => {
+            // after 3 seconds, should be expired
+            // https://github.com/3rd-Eden/memcached/issues/321
+            return common.wait(3000).then(() => {
                 return memcached.get(`test:${testnr}`).then((value) => {
-                    if (value === 'value') {
-                        throw new Error('Should reject')
-                    }
-                }, (e) => {
-                    assert.exists(e)
+                    assert.isUndefined(value)
                 })
             })
         })
