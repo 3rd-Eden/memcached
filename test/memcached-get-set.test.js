@@ -9,6 +9,8 @@ var assert = require('assert')
 
 global.testnumbers = global.testnumbers || +(Math.random(10) * 1000000).toFixed();
 
+var set_without_callback_testnr = ++global.testnumbers;
+
 /**
  * Expresso test suite for all `get` related
  * memcached commands
@@ -625,4 +627,39 @@ describe("Memcached GET SET", function() {
       done();
     });
   });
+
+  /*
+    Make sure that set without a callback works.
+   While not common, sometimes people want to just call set without a callback and ignore error cases.  While this is a bad practice, there is no requirement that you pass in a callback for most functions.  The code used to silently fail without actually setting the value (since it would try to error using the callback, which did not exist, so it would just ignore and keep going.
+  */
+  before(function(done) {
+    var memcached = new Memcached(common.servers.single)
+      , message = 'i was set'
+      , testnr = set_without_callback_testnr;
+
+    memcached.set('set_without_callback_test:'+testnr , message, 1000 );
+    // wait .5 seconds before continuing.  While this is an arbitrary value, if your memcache set takes half a second you have bigger issues
+    setTimeout(done, 500);
+  });  
+  it("make sure you can set() without a callback", function(done) {
+    var memcached = new Memcached(common.servers.single)
+      , message = 'i was set'
+      , testnr = set_without_callback_testnr
+      , callbacks = 0;
+
+    memcached.get('set_without_callback_test:'+testnr, function(error, answer) {
+      ++callbacks;
+
+      assert.ok(!error);
+      memcached.end();
+      assert.equal(callbacks, 1);
+
+      assert.ok(typeof answer === 'string');
+      answer.should.eql(message);
+
+      done();
+    });
+  });
+
+
 });
