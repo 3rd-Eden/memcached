@@ -625,4 +625,44 @@ describe("Memcached GET SET", function() {
       done();
     });
   });
+
+  /**
+   * Make sure that all the specified values are set properly.
+   * The callback should be called only once after everything is set.
+   * Since it's just a wrapper for set, just check that the values are correct.
+   */
+  it("multi set", function(done) {
+    var memcached = new Memcached(common.servers.single)
+      , testnr = global.testnumbers
+      , callbacks = 0
+      , values = {}
+      , list;
+
+    values["test:" + (++testnr)] = 'text';
+    values["test:" + (++testnr)] = 1234;
+    values["test:" + (++testnr)] = { a: 1, b: 2 };
+    list = Object.keys(values);
+
+    memcached.setMulti(values, 1000, function(error, ok) {
+      ++callbacks;
+      assert.equal(callbacks, 1);
+      assert.ok(!error);
+
+      var okList = Object.keys(ok);
+      for(var i = 0; i < okList.length; i++) {
+        assert.ok(ok[okList[i]]);
+      }
+
+      memcached.getMulti(list, function(error, data) {
+        ++callbacks;
+
+        assert.ok(!error);
+        assert.deepEqual(data, values);
+
+        memcached.end(); // close connections
+        assert.equal(callbacks, 2);
+        done();
+      });
+    });
+  });
 });

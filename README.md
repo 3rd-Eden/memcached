@@ -170,6 +170,21 @@ memcached.getMulti(['foo', 'bar'], function (err, data) {
 memcached.set('foo', 'bar', 10, function (err) { /* stuff */ });
 ```
 
+**memcached.setMulti** Stores a bunch of values in Memcached.
+
+* `values`: **Object** list of values to store as `{ key: value }`
+* `lifetime`: **Number**, how long the data needs to be stored measured in `seconds` (same for all values)
+* `callback`: **Function** the callback
+
+```js
+var values = {
+  key1: 'text',
+  key2: 1234,
+  key3: { a:1, b:2, c:3 }
+};
+memcached.setMulti(values, 10, function (err) { /* stuff */ });
+```
+
 **memcached.replace** Replaces the value in memcached.
 
 * `key`: **String** the name of the key
