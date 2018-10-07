@@ -1,5 +1,8 @@
 .DS_Store
 
+# Coverage
+.nyc_output
+
 # Dependencies
 node_modules
 
