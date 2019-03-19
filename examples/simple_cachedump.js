@@ -15,7 +15,7 @@ memcached.items( function( err, result ){
 		keys.forEach(function( stats ){
 			
 			// get a cachedump for each slabid and slab.number
-			memcached.cachedump( itemSet.server, stats, itemSet[stats].number, function( err, response ){
+			memcached.cachedump( itemSet.server, parseInt(stats), itemSet[stats].number, function( err, response ){
 				// dump the shizzle
 				console.info( JSON.stringify( response ) );
 				console.log( response.key );
