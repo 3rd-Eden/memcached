@@ -8,6 +8,7 @@
 
 var assert = require('assert')
   , fs = require('fs')
+  , net = require('net')
   , common = require('./common')
   , Memcached = require('../');
 
@@ -122,7 +123,9 @@ describe('Memcached connections', function () {
       minTimeout: 0,
       maxTimeout: 100,
       failures: 0,
-      reconnect: 100 })
+      // Reconnect timeout of 300ms is tied to 400ms test timeout,
+      // so only one reconnection attempt could occur
+      reconnect: 300 })
     , reconnectAttempts = 0;
 
     memcached.on('reconnecting', function() {
@@ -145,7 +148,7 @@ describe('Memcached connections', function () {
     });
   });
   it('should reset failures after reconnecting to failed server', function(done) {
-    var server = '127.0.0.1:1234'
+    var server = '127.0.0.1:12340'
     , memcached = new Memcached(server, {
       retries: 0,
       minTimeout: 0,
@@ -155,32 +158,48 @@ describe('Memcached connections', function () {
       reconnect: 100 })
 
     this.timeout(60000);
-
     // First request will mark server failed
     memcached.get('idontcare', function(err) {
       assert.throws(function() { throw err }, /connect ECONNREFUSED/);
-      // Wait 10ms, server should be back online
-      setTimeout(function() {
-        // Second request will mark server dead
-        memcached.get('idontcare', function(err) {
-          assert.throws(function() { throw err }, /connect ECONNREFUSED/);
-            // Third request should find no servers
+
+      // Setting server up
+      var fakeServer = net.createServer();
+      fakeServer.listen(12340, '127.0.0.1', function() {
+        // Wait 10ms, server should be back online
+        setTimeout(function() {
+          // Tearing server down
+          fakeServer.close(function () {
+            // Second request will mark server dead
             memcached.get('idontcare', function(err) {
-            assert.throws(function() { throw err }, /not available/);
-              // Give enough time for server to reconnect
-              setTimeout(function() {
-                // Server should be reconnected, but expect ECONNREFUSED
-                memcached.get('idontcare', function(err) {
-                  assert.throws(function() { throw err }, /connect ECONNREFUSED/);
-                  assert.deepEqual(memcached.issues[server].failures,
-                    memcached.issues[server].config.failures);
-                  memcached.end();
-                  done();
+              assert.throws(function() { throw err }, /connect ECONNREFUSED/);
+              // Third request should find no servers
+              memcached.get('idontcare', function(err) {
+                assert.throws(function() { throw err }, /not available/);
+
+                // Setting server up once again
+                fakeServer = net.createServer();
+                fakeServer.listen(12340, '127.0.0.1', function() {
+                  // Give enough time for server to reconnect
+                  setTimeout(function() {
+                    // And tearing new server down too
+                    fakeServer.close(function () {
+                      // Server should be reconnected, but expect ECONNREFUSED
+                      memcached.get('idontcare', function(err) {
+                        assert.throws(function() { throw err }, /connect ECONNREFUSED/);
+
+                        assert.deepEqual(memcached.issues[server].failures,
+                            memcached.issues[server].config.failures);
+                        memcached.end();
+                        done();
+                      });
+                    });
+                  }, 150);
                 });
-              }, 150);
+              });
             });
           });
-      },10);
+        },10);
+      });
     });
   });
   it('should default to port 11211', function(done) {
