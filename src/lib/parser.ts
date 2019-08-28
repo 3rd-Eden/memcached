@@ -217,7 +217,7 @@ export function parse(
         }
 
         case 'VERSION': {
-            const versionTokens = /(\d+)(?:\.)(\d+)(?:\.)(\d+)$/.exec(tokenSet[1])
+            const versionTokens = /(\d+)(?:\.)(\d+)(?:\.)(\d+)(.*)?$/.exec(tokenSet[1])
 
             return {
                 type: ParseCommand.CONTINUE,
@@ -227,6 +227,7 @@ export function parse(
                     major: versionTokens![1] || 0,
                     minor: versionTokens![2] || 0,
                     bugfix: versionTokens![3] || 0,
+                    additionalInfo: versionTokens![4].trim() || '',
                 },
             }
         }
