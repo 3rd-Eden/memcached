@@ -298,7 +298,7 @@ If there are issues with the server connection, we are going to respond with cac
 
 * `server`: *String*, The server that needs a connection, the format must be
 confirm the server_locations specification.
-* `callback`: *Function*, The callback function that receives the net.Stre
+* `callback`: *Function*, The callback function that receives the net.Stream
 
 ``` js
 memcached.connect( '192.168.0.103:11211', function( err, conn ){
@@ -375,9 +375,8 @@ memcached.connectionIssue( "Server down", connectionReference );
 Each method requires a callback function. Once this function get executed there
 will be 2 variables applied:
 
-* `error`: A error response if something went wrong while retrieving data from
-  the Memcached server. Depending on the type of request this will either be an
-  string or an Array with multiple errors.
+* `error`: A Error instance if something went wrong while retrieving data from
+  the Memcached server.
 * `response`: The actual result from the Memcached server. If the response is
   `false` or `undefined` than a cache miss occurred. Cache misses will also
   occur when there is an error. So you might want to check on errors first.
