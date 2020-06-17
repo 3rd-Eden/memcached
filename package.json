@@ -27,7 +27,7 @@
     "jackpot": ">=0.0.6"
   },
   "devDependencies": {
-    "mocha": "*",
+    "mocha": "<8.0.0",
     "should": "*",
     "pre-commit": "*"
   },
