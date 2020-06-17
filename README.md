@@ -298,7 +298,7 @@ If there are issues with the server connection, we are going to respond with cac
 
 * `server`: *String*, The server that needs a connection, the format must be
 confirm the server_locations specification.
-* `callback`: *Function*, The callback function that receives the net.Stre
+* `callback`: *Function*, The callback function that receives the net.Stream
 
 ``` js
 memcached.connect( '192.168.0.103:11211', function( err, conn ){
