@@ -94,6 +94,7 @@ Memcached server uses the same properties:
 * `keyCompression`: *true*, whether to use `md5` as hashing scheme when keys exceed `maxKeySize`.
 * `idle`: *5000*, the idle timeout for the connections.
 * `encoding`: *utf8*, encoding of data when socket as a readable stream
+* `debug: false`:  if *true*, output the commands and responses
 
 Example usage:
 
@@ -287,6 +288,15 @@ memcached.del('foo', function (err) { /* stuff */ });
 * `callback`
 
 **memcached.end** Closes all active memcached connections.
+
+```js
+memcached.get('a', function (err) {
+    // do stuff and handle errors
+    if (err) console.error("memcached error", err.stack);
+    // end the connection or you may get a timeout due to a hanging server
+    memcached.end();
+});
+```
 
 ### Private methods
 
