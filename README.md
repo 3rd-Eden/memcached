@@ -82,7 +82,8 @@ Memcached server uses the same properties:
 * `maxExpiration`: *2592000*, the maximum expiration time of keys (in seconds).
 * `maxValue`: *1048576*, the maximum size of a value.
 * `poolSize`: *10*, the maximum size of the connection pool.
-* `algorithm`: *md5*, the hashing algorithm used to generate the `hashRing` values.
+* `algorithm`: *md5*, the hashing algorithm used to generate the `hashRing` values. Can be a custom 
+hash function if `modula` is set to true (see compatibility section).
 * `reconnect`: *18000000*, the time between reconnection attempts (in milliseconds).
 * `timeout`: *5000*, the time after which Memcached sends a connection timeout (in milliseconds).
 * `retries`: *5*, the number of socket allocation retries per request.
@@ -93,7 +94,8 @@ Memcached server uses the same properties:
  that are removed from the consistent hashing scheme.
 * `keyCompression`: *true*, whether to use `md5` as hashing scheme when keys exceed `maxKeySize`.
 * `idle`: *5000*, the idle timeout for the connections.
-* `encoding`: *utf8*, encoding of data when socket as a readable stream
+* `encoding`: *utf8*, encoding of data when socket as a readable stream.
+* `modula`: *false*, if *true*, disables hashring and uses modula distribution.
 
 Example usage:
 
@@ -457,6 +459,28 @@ For compatibility with other [libmemcached](http://libmemcached.org/Clients.html
 `algorithm`.
 
 Due to client dependent type flags it is unlikely that any types other than `string` will work.
+
+If you wish to be compatible with PHP's legacy client configured with default settings you can do it by switching to modula distribution and by defining a custom algorithm:
+```js
+// jenkins-one-at-a-time hash is an old and the default algorithm used by PHP's memcached client
+// you can also use any other supported node's crypto hash string to fit your PHP's memcached 
+// client config (md5, sha1, ...)
+// credit: https://stackoverflow.com/questions/70177888/jenkins-one-at-a-time-hash-trying-to-make-python-code-reproduce-javascript-cod
+function jenkinsOneAtATimeHash(key: string) {
+  let hash = 0;
+  for (let charIndex = 0; charIndex < key.length; ++charIndex) {
+    hash += key.charCodeAt(charIndex);
+    hash += hash << 10;
+    hash ^= hash >>> 6;
+  }
+  hash += hash << 3;
+  hash ^= hash >>> 11;
+  //4,294,967,295 is FFFFFFFF, the maximum 32 bit unsigned integer value, used here as a mask.
+  return ((hash + (hash << 15)) & 4294967295) >>> 0;
+}
+
+var memcached = new Memcached([ '192.168.0.102:11211', '192.168.0.103:11211' ], { modula: true, algorithm: jenkinsOneAtATimeHash });
+```
 
 # Test
 You may encounter several problems when run the test. Be sure you already made these preparations:
